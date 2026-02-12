@@ -104,7 +104,7 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
       {
         id: 'C1001',
         certDN: 'CN=Cert-001,OU=Dept,O=Org',
-        certOrg: '000100+上海清算所',
+        certOrg: '000100+ai-vue3-elementplus',
         certAlgorithm: 'RSA',
         status: '有效',
         validFrom: '2024/01/01',

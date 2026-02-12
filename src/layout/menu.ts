@@ -18,7 +18,7 @@ export type MenuItem = {
   icon?: any
 }
 
-export const menuTree: MenuItem[] = [
+const baseMenuTree: MenuItem[] = [
   {
     key: 'department',
     label: '部门管理',
@@ -322,6 +322,8 @@ export const menuTree: MenuItem[] = [
     ],
   },
 ]
+
+export const menuTree: MenuItem[] = baseMenuTree.filter((item) => item.key !== 'participant')
 
 export const findMenuPath = (path: string) => {
   const trail: MenuItem[] = []

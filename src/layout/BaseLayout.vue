@@ -4,15 +4,14 @@
       <div class="brand">
         <div class="logo"></div>
         <div class="brand-text">
-          <div class="cn">上海清算所</div>
-          <div class="en">SHANGHAI CLEARING HOUSE</div>
+          <div class="cn">ai-vue3-elementplus</div>
         </div>
       </div>
       <div class="top-nav"></div>
       <div class="user-area">
-        <span class="hello">Hi~ guoyu, 下午好!</span>
+        <span class="hello">Hi~ ai, 下午好!</span>
         <div class="avatar">G</div>
-        <span class="user-name">guoyu</span>
+        <span class="user-name">ai</span>
       </div>
     </header>
 
