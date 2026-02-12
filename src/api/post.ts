@@ -1,77 +1,78 @@
 import request from '@/utils/request'
-import { AxiosPromise } from 'axios'
 
-// 岗位管理相关API
-
-/**
- * 查询岗位列表
- */
-export function getPostList(params?: any): AxiosPromise<any> {
-  return request({
-    url: '/posts',
+export const getPositionList = (params?: any) =>
+  request({
+    url: '/internal-positions',
     method: 'get',
-    params
+    params,
   })
-}
 
-/**
- * 获取岗位详情
- */
-export function getPostDetail(id: string): AxiosPromise<any> {
-  return request({
-    url: `/posts/${id}`,
-    method: 'get'
+export const exportPositions = (params?: any) =>
+  request({
+    url: '/internal-positions/export',
+    method: 'get',
+    params,
+    responseType: 'blob',
   })
-}
 
-/**
- * 新增岗位
- */
-export function addPost(data: any): AxiosPromise<any> {
-  return request({
-    url: '/posts',
+export const getPositionDetail = (id: string | number) =>
+  request({
+    url: `/internal-positions/${id}`,
+    method: 'get',
+  })
+
+export const getPositionUsers = (id: string | number) =>
+  request({
+    url: `/internal-positions/${id}/users`,
+    method: 'get',
+  })
+
+export const createPosition = (data: any) =>
+  request({
+    url: '/internal-positions/applications',
     method: 'post',
-    data
+    data,
   })
-}
 
-/**
- * 更新岗位
- */
-export function updatePost(id: string, data: any): AxiosPromise<any> {
-  return request({
-    url: `/posts/${id}`,
+export const modifyPosition = (id: string | number, data: any) =>
+  request({
+    url: `/internal-positions/${id}/applications`,
     method: 'put',
-    data
+    data,
   })
-}
 
-/**
- * 删除岗位
- */
-export function deletePost(id: string): AxiosPromise<any> {
-  return request({
-    url: `/posts/${id}`,
-    method: 'delete'
+export const cancelPosition = (id: string | number, data?: any) =>
+  request({
+    url: `/internal-positions/${id}/applications/cancel`,
+    method: 'post',
+    data,
   })
-}
 
-/**
- * 注销岗位
- */
-export function logoutPost(id: string): AxiosPromise<any> {
-  return request({
-    url: `/posts/${id}/logout`,
-    method: 'post'
+export const getPositionApplications = (params?: any) =>
+  request({
+    url: '/position-applications',
+    method: 'get',
+    params,
   })
-}
 
-/**
- * 恢复岗位
- */
-export function restorePost(id: string): AxiosPromise<any> {
-  return request({
-    url: `/posts/${id}/restore`,
-    method: 'post'
+export const exportPositionApplications = (params?: any) =>
+  request({
+    url: '/position-applications/export',
+    method: 'get',
+    params,
+    responseType: 'blob',
   })
-}
+
+export const reviewPositionApplication = (id: string | number, data: any) =>
+  request({
+    url: `/position-applications/${id}/review`,
+    method: 'post',
+    data,
+  })
+
+export const revokePositionApplication = (id: string | number, params?: any) =>
+  request({
+    url: `/position-applications/${id}/revoke`,
+    method: 'post',
+    params,
+  })

@@ -78,14 +78,8 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table" table-layout="auto">
-          <el-table-column
-            class-name="action-col"
-            type="index"
-            label="序号"
-            width="70"
-            fixed="left"
-          />
+        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table">
+          <el-table-column class-name="action-col" type="index" label="序号" width="70" fixed="left" />
 
           <el-table-column prop="arrNo" label="申请编号" min-width="160" />
           <el-table-column prop="arrDate" label="申请日期" min-width="120" />
@@ -99,24 +93,16 @@
           <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
           <el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
           <el-table-column prop="arrStatus" label="申请状态" min-width="120" />
-          <el-table-column label="操作" width="1" fixed="right" class-name="action-col action-col--ops">
+          <el-table-column label="操作" min-width="200" fixed="right">
             <template #default="{ row }">
-              <el-button
-                link
-                size="small"
+              <el-button link size="small"
                 type="primary"
                 @click="openReviewDialog(row)"
                 :disabled="!canReview(row)"
               >
                 复核
               </el-button>
-              <el-button
-                link
-                size="small"
-                type="danger"
-                @click="handleRevoke(row)"
-                :disabled="!canRevoke(row)"
-              >
+              <el-button link size="small" type="danger" @click="handleRevoke(row)" :disabled="!canRevoke(row)">
                 撤销
               </el-button>
             </template>
@@ -150,17 +136,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import DeptDialog from './components/DeptDialog.vue'
-import {
-  exportDepartmentApplications,
-  getAuthTree,
-  getDepartmentApplications,
-  getOperateTree,
-  reviewDepartmentApplication,
-  revokeDepartmentApplication,
-} from '@/api/department'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -194,145 +172,156 @@ const statusOptions = [
 
 const currentUser = 'superadmin'
 
-const list = ref<any[]>([])
-const loading = ref(false)
+const list = ref([
+  {
+    arrNo: `AP${todayStr.replaceAll('/', '')}0101`,
+    arrDate: todayStr,
+    opType: '1',
+    operType: '新增',
+    deptName: '清算管理部',
+    deptStatus: '正常',
+    remark: '今日新增申请',
+    arrOperName: 'superadmin',
+    applyTime: `${todayStr} 09:05:00`,
+    reviewOperName: '-',
+    reviewTime: '-',
+    revokeTime: '-',
+    status: '1',
+    arrStatus: '待复核',
+  },
+  {
+    arrNo: 'AP202602090101',
+    arrDate: '2026/02/09',
+    opType: '1',
+    operType: '新增',
+    deptName: '清算管理部',
+    deptStatus: '正常',
+    remark: '新增部门申请',
+    arrOperName: 'superadmin',
+    applyTime: '2026/02/09 09:12:11',
+    reviewOperName: '-',
+    reviewTime: '-',
+    revokeTime: '-',
+    status: '1',
+    arrStatus: '待复核',
+  },
+  {
+    arrNo: 'AP202602090103',
+    arrDate: '2026/02/09',
+    opType: '2',
+    operType: '修改',
+    deptName: '技术保障部',
+    deptStatus: '正常',
+    remark: '部门负责人调整',
+    arrOperName: 'auditor01',
+    applyTime: '2026/02/09 11:05:00',
+    reviewOperName: '-',
+    reviewTime: '-',
+    revokeTime: '-',
+    status: '1',
+    arrStatus: '待复核',
+  },
+  {
+    arrNo: 'AP202602090104',
+    arrDate: '2026/02/09',
+    opType: '1',
+    operType: '新增',
+    deptName: '运营支持部',
+    deptStatus: '正常',
+    remark: '新增运营支持部',
+    arrOperName: 'superadmin',
+    applyTime: '2026/02/09 12:20:00',
+    reviewOperName: '-',
+    reviewTime: '-',
+    revokeTime: '-',
+    status: '1',
+    arrStatus: '待复核',
+  },
+  {
+    arrNo: 'AP202602090102',
+    arrDate: '2026/02/09',
+    opType: '2',
+    operType: '修改',
+    deptName: '技术保障部',
+    deptStatus: '正常',
+    remark: '部门信息修改',
+    arrOperName: 'superadmin',
+    applyTime: '2026/02/09 09:40:11',
+    reviewOperName: 'auditor01',
+    reviewTime: '2026/02/09 10:12:00',
+    revokeTime: '-',
+    status: '3',
+    arrStatus: '复核拒绝',
+  },
+  {
+    arrNo: 'AP202602100101',
+    arrDate: '2026/02/10',
+    opType: '3',
+    operType: '注销',
+    deptName: '风控管理部',
+    deptStatus: '注销',
+    remark: '注销部门申请',
+    arrOperName: 'superadmin',
+    applyTime: '2026/02/10 09:00:00',
+    reviewOperName: '-',
+    reviewTime: '-',
+    revokeTime: '2026/02/10 09:30:00',
+    status: '4',
+    arrStatus: '已撤销',
+  },
+  {
+    arrNo: 'AP202602100102',
+    arrDate: '2026/02/10',
+    opType: '2',
+    operType: '修改',
+    deptName: '财务管理部',
+    deptStatus: '正常',
+    remark: '部门信息调整',
+    arrOperName: 'auditor02',
+    applyTime: '2026/02/10 10:10:00',
+    reviewOperName: '-',
+    reviewTime: '-',
+    revokeTime: '-',
+    status: '1',
+    arrStatus: '待复核',
+  },
+])
 
 const statusLabelMap: Record<string, string> = {
   '1': '待复核',
-  '2': '复核通过',
   '3': '复核拒绝',
   '4': '已撤销',
-  PENDING: '待复核',
-  APPROVED: '复核通过',
-  REJECTED: '复核拒绝',
-  REVOKED: '已撤销',
-  CANCELED: '已撤销',
 }
 
-const statusCodeMap: Record<string, string> = {
-  '1': '1',
-  '2': '2',
-  '3': '3',
-  '4': '4',
-  PENDING: '1',
-  APPROVED: '2',
-  REJECTED: '3',
-  REVOKED: '4',
-  CANCELED: '4',
-}
-
-const statusTypeMap: Record<string, string> = {
-  '1': 'PENDING',
-  '2': 'APPROVED',
-  '3': 'REJECTED',
-  '4': 'REVOKED',
-}
-
-const opTypeLabelMap: Record<string, string> = {
-  '1': '新增',
-  '2': '修改',
-  '3': '注销',
-  CREATE: '新增',
-  UPDATE: '修改',
-  MODIFY: '修改',
-  CANCEL: '注销',
-}
-
-const opTypeCodeMap: Record<string, string> = {
-  '1': '1',
-  '2': '2',
-  '3': '3',
-  CREATE: '1',
-  UPDATE: '2',
-  MODIFY: '2',
-  CANCEL: '3',
-}
-
-const deptStatusLabelMap: Record<string, string> = {
-  NORMAL: '正常',
-  CANCELED: '注销',
-  '1': '正常',
-  '2': '注销',
-}
-
-const formatDateTime = (value?: string) => {
-  if (!value) return '-'
-  return value.replace('T', ' ').replaceAll('-', '/')
-}
-
-const formatDate = (value?: string) => {
-  if (!value) return '-'
-  return formatDateTime(value).split(' ')[0]
-}
-
-const normalizeApply = (item: any) => {
-  const rawStatus = item.status ?? item.applyStatus ?? item.arrStatus ?? ''
-  const rawOpType = item.operationType ?? item.opType ?? item.operType ?? ''
-  const statusCode = statusCodeMap[rawStatus] ?? rawStatus ?? ''
-  const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
-  return {
-    id: item.id,
-    arrNo: item.applyNo ?? item.arrNo ?? '-',
-    arrDate: formatDate(item.applyTime ?? item.arrDate),
-    opType: opTypeCode,
-    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
-    deptName: item.deptName ?? item.name ?? '-',
-    deptStatus:
-      deptStatusLabelMap[item.deptStatus as string] ??
-      deptStatusLabelMap[item.status as string] ??
-      item.deptStatus ??
-      '-',
-    remark: item.remark ?? item.deptRemark ?? '-',
-    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
-    applyTime: formatDateTime(item.applyTime ?? item.applyTime),
-    reviewOperName: item.reviewOperName ?? '-',
-    reviewTime: formatDateTime(item.reviewTime),
-    revokeTime: formatDateTime(item.revokeTime),
-    status: statusCode,
-    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
+const fillPendingList = () => {
+  const statuses = ['1', '3', '4']
+  while (list.value.length < 10) {
+    const idx = list.value.length + 1
+    const status = statuses[idx % statuses.length] ?? '1'
+    list.value.push({
+      arrNo: `AP${todayStr.replaceAll('/', '')}${String(idx).padStart(3, '0')}`,
+      arrDate: todayStr,
+      opType: '1',
+      operType: '新增',
+      deptName: `今日部门${idx}`,
+      deptStatus: status === '4' ? '注销' : '正常',
+      remark: status === '3' ? '复核拒绝示例' : status === '4' ? '已撤销示例' : '待复核示例',
+      arrOperName: idx % 2 === 0 ? 'superadmin' : 'auditor01',
+      applyTime: `${todayStr} 10:${String(idx).padStart(2, '0')}:00`,
+      reviewOperName: '-',
+      reviewTime: '-',
+      revokeTime: status === '4' ? `${todayStr} 11:${String(idx).padStart(2, '0')}:00` : '-',
+      status,
+      arrStatus: statusLabelMap[status],
+    })
   }
 }
 
-const buildQueryParams = () => {
-  const startDate = queryForm.value.startDate?.replaceAll('/', '-')
-  const endDate = queryForm.value.endDate?.replaceAll('/', '-')
-  const statusType =
-    queryForm.value.status !== 'all' ? statusTypeMap[queryForm.value.status] : undefined
-  const operationType =
-    queryForm.value.opType !== 'all'
-      ? ({ '1': 'CREATE', '2': 'UPDATE', '3': 'CANCEL' } as Record<string, string>)[
-          queryForm.value.opType
-        ]
-      : undefined
-  return {
-    startDate,
-    endDate,
-    applyNo: queryForm.value.arrNo || undefined,
-    deptName: queryForm.value.deptName || undefined,
-    operationType,
-    statusType,
-  }
-}
-
-const fetchList = async () => {
-  loading.value = true
-  try {
-    const response = await getDepartmentApplications(buildQueryParams())
-    const payload = response?.data ?? response
-    const items = Array.isArray(payload) ? payload : payload?.data
-    list.value = (items ?? []).map(normalizeApply)
-  } catch (error) {
-    list.value = []
-    ElMessage.error('获取部门申请列表失败')
-  } finally {
-    loading.value = false
-  }
-}
+fillPendingList()
 
 const toDate = (value: string) => {
   if (!value) return null
-  const normalized = value.replaceAll('-', '/')
-  const parts = normalized.split('/')
+  const parts = value.split('/')
   if (parts.length !== 3) return null
   const y = Number(parts[0])
   const m = Number(parts[1])
@@ -375,7 +364,6 @@ const pagedList = computed(() => {
 
 const handleQuery = () => {
   currentPage.value = 1
-  fetchList()
 }
 
 const handleReset = () => {
@@ -388,27 +376,10 @@ const handleReset = () => {
     status: 'all',
   }
   currentPage.value = 1
-  fetchList()
 }
 
-const downloadBlob = (data: Blob, filename: string) => {
-  const url = URL.createObjectURL(data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
-const handleDownload = async () => {
-  try {
-    const response = await exportDepartmentApplications(buildQueryParams())
-    const payload = response?.data ?? response
-    const blob = payload instanceof Blob ? payload : new Blob([payload])
-    downloadBlob(blob, `部门申请_${todayStr.replaceAll('/', '')}.xlsx`)
-  } catch (error) {
-    ElMessage.error('下载失败')
-  }
+const handleDownload = () => {
+  ElMessage.success('下载成功')
 }
 
 const dialogVisible = ref(false)
@@ -424,10 +395,47 @@ const editRules = {
   deptName: [{ required: true, message: '请录入部门名称', trigger: 'blur' }],
 }
 
-const authTree = ref<any[]>([])
-const operateTree = ref<any[]>([])
-const authChecked = ref<string[]>([])
-const operateChecked = ref<string[]>([])
+const authTree = ref([
+  {
+    id: 'A1',
+    label: '清算管理',
+    children: [
+      { id: 'A1-1', label: '查询' },
+      { id: 'A1-2', label: '新增' },
+      { id: 'A1-3', label: '修改' },
+    ],
+  },
+  {
+    id: 'A2',
+    label: '运营服务',
+    children: [
+      { id: 'A2-1', label: '导出' },
+      { id: 'A2-2', label: '注销' },
+    ],
+  },
+])
+
+const operateTree = ref([
+  {
+    id: 'O1',
+    label: '系统管理',
+    children: [
+      { id: 'O1-1', label: '部门维护' },
+      { id: 'O1-2', label: '用户维护' },
+    ],
+  },
+  {
+    id: 'O2',
+    label: '安全管理',
+    children: [
+      { id: 'O2-1', label: '权限刷新' },
+      { id: 'O2-2', label: '审计日志' },
+    ],
+  },
+])
+
+const authChecked = ref<string[]>(['A1-1', 'A2-1'])
+const operateChecked = ref<string[]>(['O1-1'])
 
 const canRevoke = (row: any) => row.status === '1' && row.arrOperName === currentUser
 const canReview = (row: any) =>
@@ -455,26 +463,13 @@ const handleReviewSave = (
     dialogVisible.value = false
     return
   }
-  reviewDepartmentApplication(currentRow.value.id, {
-    approved: true,
-    reviewerName: currentUser,
-    reviewRemark: '',
-    name: payload.deptName,
-    deptRemark: payload.remark,
-  })
-    .then(() => {
-      currentRow.value.status = '2'
-      currentRow.value.arrStatus = '复核通过'
-      currentRow.value.reviewOperName = currentUser
-      currentRow.value.reviewTime = todayStr + ' 10:30:00'
-      ElMessage.success('操作成功')
-    })
-    .catch(() => {
-      ElMessage.error('复核失败')
-    })
-    .finally(() => {
-      dialogVisible.value = false
-    })
+
+  currentRow.value.status = '2'
+  currentRow.value.arrStatus = '复核通过'
+  currentRow.value.reviewOperName = currentUser
+  currentRow.value.reviewTime = todayStr + ' 10:30:00'
+  ElMessage.success('操作成功')
+  dialogVisible.value = false
 }
 
 const handleRevoke = (row: any) => {
@@ -486,36 +481,11 @@ const handleRevoke = (row: any) => {
     ElMessage.error('操作用户仅能撤销本人提交的申请')
     return
   }
-  revokeDepartmentApplication(row.id)
-    .then(() => {
-      row.status = '4'
-      row.arrStatus = '已撤销'
-      row.revokeTime = todayStr + ' 11:00:00'
-      ElMessage.success('操作成功')
-    })
-    .catch(() => {
-      ElMessage.error('撤销失败')
-    })
+  row.status = '4'
+  row.arrStatus = '已撤销'
+  row.revokeTime = todayStr + ' 11:00:00'
+  ElMessage.success('操作成功')
 }
-
-const loadTrees = async () => {
-  try {
-    const [authResponse, operateResponse] = await Promise.all([getAuthTree(), getOperateTree()])
-    const authPayload = authResponse?.data ?? authResponse
-    const operatePayload = operateResponse?.data ?? operateResponse
-    authTree.value = Array.isArray(authPayload?.data) ? authPayload.data : authPayload?.data ?? []
-    operateTree.value =
-      Array.isArray(operatePayload?.data) ? operatePayload.data : operatePayload?.data ?? []
-  } catch (error) {
-    authTree.value = []
-    operateTree.value = []
-  }
-}
-
-onMounted(() => {
-  fetchList()
-  loadTrees()
-})
 </script>
 
 <style scoped lang="scss">

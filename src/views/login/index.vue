@@ -85,7 +85,7 @@ const handleLogin = async () => {
   align-items: center;
   height: 100vh;
   width: 100vw;
-  background: #f3f2ee;
+  background: var(--app-bg);
 }
 
 .login-wrap {
@@ -97,7 +97,7 @@ const handleLogin = async () => {
 .card-header {
   text-align: center;
   font-weight: 700;
-  color: #6b532b;
+  color: var(--app-text-title);
 }
 
 .large-button {

@@ -8,7 +8,7 @@
               <el-date-picker
                 v-model="queryForm.startDate"
                 type="date"
-                value-format="YYYY/MM/DD"
+                value-format="yyyy/MM/dd"
                 placeholder="选择开始日期"
                 clearable
               />
@@ -19,7 +19,7 @@
               <el-date-picker
                 v-model="queryForm.endDate"
                 type="date"
-                value-format="YYYY/MM/DD"
+                value-format="yyyy/MM/dd"
                 placeholder="选择结束日期"
                 clearable
               />
@@ -72,24 +72,21 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table">
+        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table" table-layout="auto">
           <el-table-column type="index" label="序号" width="70" fixed="left" />
-
-
-
-<el-table-column prop="arrNo" label="申请编号" min-width="160" />
-<el-table-column prop="arrDate" label="申请日期" min-width="120" />
-<el-table-column prop="operType" label="操作类型" min-width="120" />
-<el-table-column prop="deptName" label="部门名称" min-width="160" />
-<el-table-column prop="deptStatus" label="部门状态" min-width="120" />
-<el-table-column prop="remark" label="备注" min-width="200" />
-<el-table-column prop="arrOperName" label="申请人" min-width="120" />
-<el-table-column prop="applyTime" label="申请时间" min-width="170" />
-<el-table-column prop="reviewOperName" label="复核人" min-width="120" />
-<el-table-column prop="reviewTime" label="复核时间" min-width="170" />
-<el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
-<el-table-column prop="arrStatus" label="申请状态" min-width="120" />
-</el-table>
+          <el-table-column prop="arrNo" label="申请编号" min-width="160" />
+          <el-table-column prop="arrDate" label="申请日期" min-width="120" />
+          <el-table-column prop="operType" label="操作类型" min-width="120" />
+          <el-table-column prop="deptName" label="部门名称" min-width="160" />
+          <el-table-column prop="deptStatus" label="部门状态" min-width="120" />
+          <el-table-column prop="remark" label="备注" min-width="200" />
+          <el-table-column prop="arrOperName" label="申请人" min-width="120" />
+          <el-table-column prop="applyTime" label="申请时间" min-width="170" />
+          <el-table-column prop="reviewOperName" label="复核人" min-width="120" />
+          <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
+          <el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
+          <el-table-column prop="arrStatus" label="申请状态" min-width="120" />
+        </el-table>
       </div>
 
       <div class="table-pagination">
@@ -106,8 +103,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { exportDepartmentApplications, getDepartmentApplications } from '@/api/department'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -133,102 +131,141 @@ const opTypeOptions = [
 
 const statusOptions = [{ value: '2', label: '复核通过' }]
 
-const list = ref([
-  {
-    arrNo: `AP${todayStr.replaceAll('/', '')}0001`,
-    arrDate: todayStr,
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    deptStatus: '正常',
-    remark: '今日新增申请',
-    arrOperName: 'superadmin',
-    applyTime: `${todayStr} 09:00:00`,
-    reviewOperName: 'auditor01',
-    reviewTime: `${todayStr} 10:00:00`,
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-  {
-    arrNo: 'AP202602090001',
-    arrDate: '2026/02/09',
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    deptStatus: '正常',
-    remark: '新增部门申请',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/09 09:12:11',
-    reviewOperName: 'auditor01',
-    reviewTime: '2026/02/09 10:01:00',
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-  {
-    arrNo: 'AP202602090002',
-    arrDate: '2026/02/09',
-    opType: '2',
-    operType: '修改',
-    deptName: '技术保障部',
-    deptStatus: '正常',
-    remark: '部门信息修改',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/09 09:40:11',
-    reviewOperName: 'auditor01',
-    reviewTime: '2026/02/09 10:12:00',
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-  {
-    arrNo: 'AP202602100001',
-    arrDate: '2026/02/10',
-    opType: '3',
-    operType: '注销',
-    deptName: '风控管理部',
-    deptStatus: '注销',
-    remark: '注销部门申请',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/10 09:00:00',
-    reviewOperName: 'auditor02',
-    reviewTime: '2026/02/10 10:05:00',
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-])
+const list = ref<any[]>([])
+const loading = ref(false)
 
-const fillReviewedList = () => {
-  while (list.value.length < 10) {
-    const idx = list.value.length + 1
-    list.value.push({
-      arrNo: `AP${todayStr.replaceAll('/', '')}${String(idx).padStart(3, '0')}`,
-      arrDate: todayStr,
-      opType: '1',
-      operType: '新增',
-      deptName: `今日部门${idx}`,
-      deptStatus: '正常',
-      remark: '今日复核通过',
-      arrOperName: 'superadmin',
-      applyTime: `${todayStr} 09:${String(idx).padStart(2, '0')}:00`,
-      reviewOperName: 'auditor01',
-      reviewTime: `${todayStr} 10:${String(idx).padStart(2, '0')}:00`,
-      revokeTime: '-',
-      status: '2',
-      arrStatus: '复核通过',
-    })
+const statusLabelMap: Record<string, string> = {
+  '1': '待复核',
+  '2': '复核通过',
+  '3': '复核拒绝',
+  '4': '已撤销',
+  PENDING: '待复核',
+  APPROVED: '复核通过',
+  REJECTED: '复核拒绝',
+  REVOKED: '已撤销',
+  CANCELED: '已撤销',
+}
+
+const statusCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  PENDING: '1',
+  APPROVED: '2',
+  REJECTED: '3',
+  REVOKED: '4',
+  CANCELED: '4',
+}
+
+const opTypeLabelMap: Record<string, string> = {
+  '1': '新增',
+  '2': '修改',
+  '3': '注销',
+  CREATE: '新增',
+  UPDATE: '修改',
+  MODIFY: '修改',
+  CANCEL: '注销',
+}
+
+const opTypeCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  CREATE: '1',
+  UPDATE: '2',
+  MODIFY: '2',
+  CANCEL: '3',
+}
+
+const deptStatusLabelMap: Record<string, string> = {
+  NORMAL: '正常',
+  CANCELED: '注销',
+  '1': '正常',
+  '2': '注销',
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '-'
+  return value.replace('T', ' ').replaceAll('-', '/')
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return '-'
+  return formatDateTime(value).split(' ')[0]
+}
+
+const normalizeApply = (item: any) => {
+  const rawStatus = item.status ?? item.applyStatus ?? item.arrStatus ?? ''
+  const rawOpType = item.operationType ?? item.opType ?? item.operType ?? ''
+  const statusCode = statusCodeMap[rawStatus] ?? rawStatus ?? ''
+  const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
+  return {
+    id: item.id,
+    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrDate: formatDate(item.applyTime ?? item.arrDate),
+    opType: opTypeCode,
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
+    deptName: item.deptName ?? item.name ?? '-',
+    deptStatus:
+      deptStatusLabelMap[item.deptStatus as string] ??
+      deptStatusLabelMap[item.status as string] ??
+      item.deptStatus ??
+      '-',
+    remark: item.remark ?? item.deptRemark ?? '-',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    applyTime: formatDateTime(item.applyTime ?? item.applyTime),
+    reviewOperName: item.reviewOperName ?? '-',
+    reviewTime: formatDateTime(item.reviewTime),
+    revokeTime: formatDateTime(item.revokeTime),
+    status: statusCode,
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
   }
 }
 
-fillReviewedList()
+const buildQueryParams = () => {
+  const startDate = queryForm.value.startDate?.replaceAll('/', '-')
+  const endDate = queryForm.value.endDate?.replaceAll('/', '-')
+  const operationType =
+    queryForm.value.opType !== 'all'
+      ? ({ '1': 'CREATE', '2': 'UPDATE', '3': 'CANCEL' } as Record<string, string>)[
+          queryForm.value.opType
+        ]
+      : undefined
+  return {
+    startDate,
+    endDate,
+    applyNo: queryForm.value.arrNo || undefined,
+    deptName: queryForm.value.deptName || undefined,
+    operationType,
+    statusType: 'APPROVED',
+  }
+}
+
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const response = await getDepartmentApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    list.value = (items ?? []).map(normalizeApply)
+  } catch (error) {
+    list.value = []
+    ElMessage.error('获取部门申请列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const toDate = (value: string) => {
   if (!value) return null
-  const parts = value.split('/')
+  const normalized = value.replaceAll('-', '/')
+  const parts = normalized.split('/')
   if (parts.length !== 3) return null
-  const [y, m, d] = parts.map(Number)
+  const y = Number(parts[0])
+  const m = Number(parts[1])
+  const d = Number(parts[2])
+  if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null
   return new Date(y, m - 1, d)
 }
 
@@ -264,6 +301,7 @@ const pagedList = computed(() => {
 
 const handleQuery = () => {
   currentPage.value = 1
+  fetchList()
 }
 
 const handleReset = () => {
@@ -276,12 +314,32 @@ const handleReset = () => {
     status: '2',
   }
   currentPage.value = 1
+  fetchList()
 }
 
-const handleDownload = () => {
-  // mock download action
-  ElMessage.success('下载成功')
+const downloadBlob = (data: Blob, filename: string) => {
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
+
+const handleDownload = async () => {
+  try {
+    const response = await exportDepartmentApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const blob = payload instanceof Blob ? payload : new Blob([payload])
+    downloadBlob(blob, `部门申请_复核_${todayStr.replaceAll('/', '')}.xlsx`)
+  } catch (error) {
+    ElMessage.error('下载失败')
+  }
+}
+
+onMounted(() => {
+  fetchList()
+})
 </script>
 
 <style scoped lang="scss">
@@ -297,8 +355,8 @@ const handleDownload = () => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -314,8 +372,8 @@ const handleDownload = () => {
 .query-form :deep(.el-select__wrapper),
 .query-form :deep(.el-date-editor) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-form :deep(.el-date-editor) {
@@ -406,17 +464,17 @@ const handleDownload = () => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 .table-pagination {
@@ -432,19 +490,19 @@ const handleDownload = () => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .tree-disabled {
@@ -455,7 +513,7 @@ const handleDownload = () => {
 .tree-disabled :deep(.el-tree-node__content),
 .tree-disabled :deep(.el-tree-node__label),
 .tree-disabled :deep(.el-checkbox__label) {
-  color: #a8abb2;
+  color: var(--app-text-muted);
 }
 
 .tree-disabled :deep(.el-tree-node__content:hover) {
@@ -464,13 +522,13 @@ const handleDownload = () => {
 
 .tree-disabled :deep(.el-checkbox__input.is-checked .el-checkbox__inner),
 .tree-disabled :deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
-  background-color: #dcdfe6;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg);
+  border-color: var(--app-disabled-bg);
 }
 
 .tree-disabled :deep(.el-checkbox__input .el-checkbox__inner) {
-  background-color: #f5f7fa;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg-light);
+  border-color: var(--app-disabled-bg);
 }
 
 @media (max-width: 1200px) {
@@ -492,7 +550,7 @@ const handleDownload = () => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 
 </style>

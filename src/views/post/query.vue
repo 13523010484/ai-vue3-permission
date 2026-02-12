@@ -38,8 +38,8 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table ref="tableRef" :data="filteredList" border stripe class="dept-table">
-          <el-table-column type="index" label="序号" width="70" fixed="left" />
+        <el-table ref="tableRef" :data="filteredList" border stripe class="dept-table" table-layout="auto">
+          <el-table-column class-name="action-col" type="index" label="序号" width="70" fixed="left" />
 
 
 
@@ -51,7 +51,7 @@
               <span v-else>{{ row.deptName }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="postName" label="岗位名称" min-width="180">
+          <el-table-column class-name="action-col" prop="postName" label="岗位名称" min-width="180">
 <template #default="{ row }">
               <el-tooltip v-if="row.postName.length > 10" :content="row.postName">
                 <span>{{ truncateText(row.postName, 10) }}</span>
@@ -59,7 +59,7 @@
               <span v-else>{{ row.postName }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="postStatus" label="岗位状态" min-width="120" />
+          <el-table-column class-name="action-col" prop="postStatus" label="岗位状态" min-width="120" />
 <el-table-column prop="remark" label="备注" min-width="180">
 <template #default="{ row }">
               <el-tooltip v-if="row.remark && row.remark.length > 10" :content="row.remark">
@@ -68,20 +68,20 @@
               <span v-else>{{ row.remark || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="inputOperName" label="录入人" min-width="120" />
-<el-table-column prop="inputTime" label="录入时间" min-width="170" />
-<el-table-column prop="updateOperName" label="更新人" min-width="120" />
-<el-table-column prop="updateTime" label="更新时间" min-width="170" />
+          <el-table-column class-name="action-col" prop="createdOperName" label="录入人" min-width="120" />
+<el-table-column prop="createdAt" label="录入时间" min-width="170" />
+<el-table-column prop="updatedOperName" label="更新人" min-width="120" />
+<el-table-column prop="updatedAt" label="更新时间" min-width="170" />
 <el-table-column prop="reviewOperName" label="复核人" min-width="120" />
 <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
-<el-table-column label="操作" min-width="320" fixed="right">
+          <el-table-column label="操作" width="1" fixed="right" class-name="action-col action-col--ops">
 <template #default="{ row }">
-              <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
-              <el-button link type="primary" @click="openUserDialog(row)">用户查询</el-button>
-              <el-button link type="primary" @click="openEditDialog(row)" :disabled="row.status !== '1'">
+              <el-button link size="small" type="primary" @click="openDetailDialog(row)">详情</el-button>
+              <el-button link size="small" type="primary" @click="openUserDialog(row)">用户查询</el-button>
+              <el-button link size="small" type="primary" @click="openEditDialog(row)" :disabled="row.status !== '1'">
                 修改
               </el-button>
-              <el-button link type="danger" @click="handleLogout(row)" :disabled="row.status !== '1'">
+              <el-button link size="small" type="danger" @click="handleLogout(row)" :disabled="row.status !== '1'">
                 注销
               </el-button>
             </template>
@@ -107,10 +107,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import PostDialog from './components/PostDialog.vue'
 import PostUserDialog from './components/PostUserDialog.vue'
+import {
+  cancelPosition,
+  createPosition,
+  exportPositions,
+  getPositionList,
+  getPositionUsers,
+  modifyPosition,
+} from '@/api/post'
 
 type StatusValue = '1' | '2' | ''
 
@@ -122,10 +130,10 @@ type PostRow = {
   status: StatusValue
   postStatus: string
   remark: string
-  inputOperName: string
-  inputTime: string
-  updateOperName: string
-  updateTime: string
+  createdOperName: string
+  createdAt: string
+  updatedOperName: string
+  updatedAt: string
   reviewOperName: string
   reviewTime: string
 }
@@ -140,116 +148,104 @@ const queryForm = ref({
   status: '' as StatusValue,
 })
 
-const today = new Date()
-const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-const todayStr = `${today.getFullYear()}/${pad(today.getMonth() + 1)}/${pad(today.getDate())}`
-const now = '2026/02/09 13:30:00'
-const list = ref<PostRow[]>([
-  {
-    id: `P${todayStr.replaceAll('/', '')}01`,
-    deptName: '清算管理部',
-    postName: '今日新增岗',
-    postType: '1',
-    status: '1',
-    postStatus: '正常',
-    remark: '今日新增岗位',
-    inputOperName: 'superadmin',
-    inputTime: `${todayStr} 09:30:00`,
-    updateOperName: 'superadmin',
-    updateTime: `${todayStr} 09:30:00`,
-    reviewOperName: 'auditor01',
-    reviewTime: `${todayStr} 10:00:00`,
-  },
-  {
-    id: 'P1001',
-    deptName: '清算管理部',
-    postName: '清算操作员',
-    postType: '1',
-    status: '1',
-    postStatus: '正常',
-    remark: '清算业务操作岗位',
-    inputOperName: 'superadmin',
-    inputTime: now,
-    updateOperName: 'superadmin',
-    updateTime: now,
-    reviewOperName: 'auditor01',
-    reviewTime: now,
-  },
-  {
-    id: 'P1002',
-    deptName: '技术保障部',
-    postName: '系统维护岗',
-    postType: '1',
-    status: '1',
-    postStatus: '正常',
-    remark: '系统巡检维护',
-    inputOperName: 'superadmin',
-    inputTime: now,
-    updateOperName: 'superadmin',
-    updateTime: now,
-    reviewOperName: 'auditor01',
-    reviewTime: now,
-  },
-  {
-    id: 'P1003',
-    deptName: '风控管理部',
-    postName: '风控审核岗',
-    postType: '1',
-    status: '2',
-    postStatus: '注销',
-    remark: '已注销岗位',
-    inputOperName: 'superadmin',
-    inputTime: now,
-    updateOperName: 'superadmin',
-    updateTime: now,
-    reviewOperName: 'auditor01',
-    reviewTime: now,
-  },
-])
+const list = ref<PostRow[]>([])
+const loading = ref(false)
+const now = new Date().toISOString().replace('T', ' ').slice(0, 19).replaceAll('-', '/')
 
-const fillPostList = () => {
-  const statuses: StatusValue[] = ['1', '2']
-  while (list.value.length < 10) {
-    const idx = list.value.length + 1
-    const status = statuses[idx % statuses.length]
-    list.value.push({
-      id: `P${todayStr.replaceAll('/', '')}${String(idx).padStart(2, '0')}`,
-      deptName: '清算管理部',
-      postName: status === '1' ? `今日新增岗${idx}` : `注销岗位${idx}`,
-      postType: '1',
-      status,
-      postStatus: status === '1' ? '正常' : '注销',
-      remark: status === '1' ? '今日新增岗位' : '已注销岗位',
-      inputOperName: 'superadmin',
-      inputTime: `${todayStr} 11:${String(idx).padStart(2, '0')}:00`,
-      updateOperName: 'superadmin',
-      updateTime: `${todayStr} 11:${String(idx).padStart(2, '0')}:00`,
-      reviewOperName: 'auditor01',
-      reviewTime: `${todayStr} 12:${String(idx).padStart(2, '0')}:00`,
-    })
+const statusLabelMap: Record<string, string> = {
+  NORMAL: '正常',
+  CANCELED: '注销',
+  '1': '正常',
+  '2': '注销',
+}
+
+const statusCodeMap: Record<string, StatusValue> = {
+  NORMAL: '1',
+  CANCELED: '2',
+  '1': '1',
+  '2': '2',
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '-'
+  return value.replace('T', ' ').replaceAll('-', '/')
+}
+
+const normalizePosition = (item: any): PostRow => ({
+  id: String(item.id ?? ''),
+  deptName: item.deptName ?? '-',
+  postName: item.name ?? item.postName ?? '-',
+  postType: '1',
+  status: statusCodeMap[item.status] ?? '1',
+  postStatus: statusLabelMap[item.status] ?? item.status ?? '-',
+  remark: item.remark ?? '-',
+  createdOperName: item.createdOperName ?? '-',
+  createdAt: formatDateTime(item.createdAt),
+  updatedOperName: item.updatedOperName ?? '-',
+  updatedAt: formatDateTime(item.updatedAt),
+  reviewOperName: item.reviewOperName ?? '-',
+  reviewTime: formatDateTime(item.reviewTime),
+})
+
+const getDeptId = () => {
+  const raw = localStorage.getItem('deptId')
+  const val = raw ? Number(raw) : NaN
+  return Number.isFinite(val) && val > 0 ? val : undefined
+}
+
+const buildQueryParams = () => {
+  const statusMap: Record<string, string> = { '1': 'NORMAL', '2': 'CANCELED' }
+  return {
+    deptId: getDeptId(),
+    name: queryForm.value.postName || undefined,
+    status: queryForm.value.status ? statusMap[queryForm.value.status] : undefined,
   }
 }
 
-fillPostList()
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const response = await getPositionList(buildQueryParams())
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    list.value = (items ?? []).map(normalizePosition)
+  } catch (error) {
+    list.value = []
+    ElMessage.error('获取岗位列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
-const filteredList = computed(() => {
-  return list.value.filter((item) => {
-    if (queryForm.value.postName && !item.postName.includes(queryForm.value.postName)) return false
-    if (queryForm.value.status && item.status !== queryForm.value.status) return false
-    return true
-  })
-})
+const filteredList = computed(() => list.value)
 
 const handleQuery = () => {
-  // mock
+  fetchList()
 }
 
 const handleReset = () => {
   queryForm.value = { postName: '', status: '' }
+  fetchList()
 }
 
-const handleDownload = () => {
-  ElMessage.success('下载成功')
+const downloadBlob = (data: Blob, filename: string) => {
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const handleDownload = async () => {
+  try {
+    const response = await exportPositions(buildQueryParams())
+    const payload = response?.data ?? response
+    const blob = payload instanceof Blob ? payload : new Blob([payload])
+    downloadBlob(blob, `岗位查询_${new Date().getTime()}.xlsx`)
+  } catch (error) {
+    ElMessage.error('下载失败')
+  }
 }
 
 const truncateText = (text: string, size: number) => {
@@ -271,61 +267,44 @@ const editRules = {
   postName: [{ required: true, message: '请录入岗位名称', trigger: 'blur' }],
 }
 
-const authTree = ref([
-  {
-    id: 'A1',
-    label: '系统管理',
-    children: [
-      { id: 'A1-1', label: '部门维护' },
-      { id: 'A1-2', label: '用户维护' },
-    ],
-  },
-  {
-    id: 'A2',
-    label: '安全管理',
-    children: [
-      { id: 'A2-1', label: '权限刷新' },
-      { id: 'A2-2', label: '审计日志' },
-    ],
-  },
-])
+const authTree = ref<any[]>([])
+const operateTree = ref<any[]>([])
+const authChecked = ref<string[]>([])
+const operateChecked = ref<string[]>([])
 
-const operateTree = ref([
-  {
-    id: 'O1',
-    label: '清算管理',
-    children: [
-      { id: 'O1-1', label: '查询' },
-      { id: 'O1-2', label: '新增' },
-    ],
-  },
-  {
-    id: 'O2',
-    label: '运营服务',
-    children: [
-      { id: 'O2-1', label: '导出' },
-      { id: 'O2-2', label: '注销' },
-    ],
-  },
-])
+const postUsers = ref<any[]>([])
 
-const authChecked = ref<string[]>(['A1-1'])
-const operateChecked = ref<string[]>(['O1-1'])
-
-const postUsers = ref([
-  { operCode: 'postuser01', operName: '王宁', userType: '部门管理员', status: '正常' },
-  { operCode: 'postuser02', operName: '李娜', userType: '操作员', status: '正常' },
-])
+type SavePayload = {
+  deptName: string
+  postName: string
+  remark: string
+  operateKeys?: string[]
+  authKeys?: string[]
+}
 
 const userVisible = ref(false)
-const openUserDialog = (row: PostRow) => {
+const openUserDialog = async (row: PostRow) => {
   userVisible.value = true
+  try {
+    const response = await getPositionUsers(row.id)
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    postUsers.value =
+      items?.map((user: any) => ({
+        operCode: user.username ?? '-',
+        operName: user.fullName ?? '-',
+        userType: user.userType ?? '-',
+        status: statusLabelMap[user.status] ?? user.status ?? '-',
+      })) ?? []
+  } catch {
+    postUsers.value = []
+  }
 }
 
 const openAddDialog = () => {
   dialogMode.value = 'add'
   editForm.value = {
-    deptName: '清算管理部',
+    deptName: '',
     postName: '',
     postType: '1',
     remark: '',
@@ -361,58 +340,42 @@ const openDetailDialog = (row: PostRow) => {
   dialogVisible.value = true
 }
 
-const handleSaveEdit = (payload: typeof editForm.value & { operateKeys: string[]; authKeys: string[] }) => {
+const handleSaveEdit = async (payload: SavePayload) => {
   const authKeys = payload.authKeys || []
   const operateKeys = payload.operateKeys || []
-  if (authKeys.length === 0) {
+  if (authTree.value.length > 0 && authKeys.length === 0) {
     ElMessage.error('请指定岗位的可授权范围')
     return
   }
-  if (operateKeys.length === 0) {
+  if (operateTree.value.length > 0 && operateKeys.length === 0) {
     ElMessage.error('请指定岗位的可操作范围')
     return
   }
 
-  const exists = list.value.some((item) => item.postName === payload.postName)
-  if (dialogMode.value === 'add' && exists) {
-    ElMessage.error('岗位名称已经存在，请查证后重新录入')
-    return
-  }
-  if (dialogMode.value === 'edit') {
-    const other = list.value.find((item) => item.postName === payload.postName)
-    if (other && other.postName !== editForm.value.postName) {
-      ElMessage.error('岗位名称已经存在，请查证后重新录入')
-      return
-    }
+  const operScopes = operateKeys.map((key) => ({ scopeCode: key, scopeName: key }))
+  const basePayload = {
+    deptId: getDeptId(),
+    deptName: payload.deptName,
+    name: payload.postName,
+    remark: payload.remark,
+    operScopes,
   }
 
-  if (dialogMode.value === 'add') {
-    list.value.unshift({
-      id: `P${Math.floor(Math.random() * 9000 + 1000)}`,
-      deptName: payload.deptName,
-      postName: payload.postName,
-      postType: '1',
-      status: '1',
-      postStatus: '正常',
-      remark: payload.remark,
-      inputOperName: 'superadmin',
-      inputTime: now,
-      updateOperName: 'superadmin',
-      updateTime: now,
-      reviewOperName: 'auditor01',
-      reviewTime: now,
-    })
-  } else {
-    const target = list.value.find((item) => item.postName === editForm.value.postName)
-    if (target) {
-      target.remark = payload.remark
-      target.updateOperName = 'superadmin'
-      target.updateTime = now
+  try {
+    if (dialogMode.value === 'add') {
+      await createPosition(basePayload)
+    } else {
+      const target = list.value.find((item) => item.postName === editForm.value.postName)
+      if (target) {
+        await modifyPosition(target.id, basePayload)
+      }
     }
+    ElMessage.success('操作成功')
+    dialogVisible.value = false
+    fetchList()
+  } catch (error) {
+    ElMessage.error('操作失败')
   }
-
-  ElMessage.success('操作成功')
-  dialogVisible.value = false
 }
 
 const handleLogout = (row: PostRow) => {
@@ -420,12 +383,22 @@ const handleLogout = (row: PostRow) => {
     ElMessage.error('该岗位状态已是注销状态不能进行注销操作')
     return
   }
-  row.status = '2'
-  row.postStatus = '注销'
-  row.updateOperName = 'superadmin'
-  row.updateTime = now
-  ElMessage.success('操作成功')
+  cancelPosition(row.id)
+    .then(() => {
+      row.status = '2'
+      row.postStatus = '注销'
+      row.updatedOperName = 'superadmin'
+      row.updatedAt = now
+      ElMessage.success('操作成功')
+    })
+    .catch(() => {
+      ElMessage.error('操作失败')
+    })
 }
+
+onMounted(() => {
+  fetchList()
+})
 </script>
 
 <style scoped lang="scss">
@@ -441,8 +414,8 @@ const handleLogout = (row: PostRow) => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -457,8 +430,8 @@ const handleLogout = (row: PostRow) => {
 .query-form :deep(.el-input__wrapper),
 .query-form :deep(.el-select__wrapper) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-actions {
@@ -530,17 +503,17 @@ const handleLogout = (row: PostRow) => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 @media (max-width: 1200px) {
@@ -562,7 +535,8 @@ const handleLogout = (row: PostRow) => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 
 </style>
+

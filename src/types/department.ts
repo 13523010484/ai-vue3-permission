@@ -1,4 +1,4 @@
-export interface DeptListQuery {
+﻿export interface DeptListQuery {
   deptName?: string
   status?: string | number
   page?: number
@@ -10,6 +10,13 @@ export interface DeptRow {
   deptName: string
   remark?: string
   status?: string
+  deptStatus?: string
+  createdOperName?: string
+  createdAt?: string
+  updatedOperName?: string
+  updatedAt?: string
+  reviewOperName?: string
+  reviewTime?: string
 }
 
 export interface DeptDetail {
@@ -40,6 +47,31 @@ export interface DeptApplicationPayload {
   applicantDeptName?: string
 }
 
+export interface DeptApplyQuery {
+  statusType?: string
+  startDate?: string
+  endDate?: string
+  applyNo?: string
+  deptName?: string
+  operationType?: string
+}
+
+export interface DeptApplySummary {
+  id: number | string
+  applyNo?: string
+  deptId?: number | string
+  deptName?: string
+  operationType?: string
+  status?: string
+  applicantName?: string
+  applyTime?: string
+  reviewOperName?: string
+  reviewTime?: string
+  revokeTime?: string
+  deptStatus?: string
+  remark?: string
+}
+
 export interface AuthTreeNode {
   id: string
   label: string
@@ -51,3 +83,4 @@ export interface OperateTreeNode {
   label: string
   children?: OperateTreeNode[]
 }
+

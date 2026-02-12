@@ -8,7 +8,7 @@
               <el-date-picker
                 v-model="queryForm.startDate"
                 type="date"
-                value-format="YYYY/MM/DD"
+                value-format="yyyy/MM/dd"
                 placeholder="选择开始日期"
                 clearable
               />
@@ -19,7 +19,7 @@
               <el-date-picker
                 v-model="queryForm.endDate"
                 type="date"
-                value-format="YYYY/MM/DD"
+                value-format="yyyy/MM/dd"
                 placeholder="选择结束日期"
                 clearable
               />
@@ -72,8 +72,8 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table">
-          <el-table-column type="index" label="序号" width="70" fixed="left" />
+        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table" table-layout="auto">
+          <el-table-column class-name="action-col" type="index" label="序号" width="70" fixed="left" />
 
 
 
@@ -91,10 +91,10 @@
 <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
 <el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
 <el-table-column prop="arrStatus" label="申请状态" min-width="120" />
-<el-table-column label="操作" min-width="200" fixed="right">
+          <el-table-column label="操作" width="1" fixed="right" class-name="action-col action-col--ops">
 <template #default="{ row }">
-              <el-button link type="primary" @click="openReviewDialog(row)">复核</el-button>
-              <el-button link type="danger" @click="handleRevoke(row)">撤销</el-button>
+              <el-button link size="small" type="primary" @click="openReviewDialog(row)">复核</el-button>
+              <el-button link size="small" type="danger" @click="handleRevoke(row)">撤销</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -126,9 +126,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import PostDialog from './components/PostDialog.vue'
+import {
+  exportPositionApplications,
+  getPositionApplications,
+  reviewPositionApplication,
+  revokePositionApplication,
+} from '@/api/post'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -162,120 +168,141 @@ const statusOptions = [
 
 const currentUser = 'superadmin'
 
-const list = ref([
-  {
-    arrNo: `PP${todayStr.replaceAll('/', '')}0101`,
-    arrDate: todayStr,
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    postName: '今日新增岗',
-    postType: '内部',
-    postStatus: '正常',
-    remark: '今日新增岗位申请',
-    arrOperName: 'superadmin',
-    applyTime: `${todayStr} 09:05:00`,
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '-',
-    status: '1',
-    arrStatus: '待复核',
-  },
-  {
-    arrNo: 'PP202602090101',
-    arrDate: '2026/02/09',
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    postName: '清算操作员',
-    postType: '内部',
-    postStatus: '正常',
-    remark: '新增岗位申请',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/09 09:12:11',
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '-',
-    status: '1',
-    arrStatus: '待复核',
-  },
-  {
-    arrNo: 'PP202602090102',
-    arrDate: '2026/02/09',
-    opType: '2',
-    operType: '修改',
-    deptName: '技术保障部',
-    postName: '系统维护岗',
-    postType: '内部',
-    postStatus: '正常',
-    remark: '岗位信息修改',
-    arrOperName: 'auditor01',
-    applyTime: '2026/02/09 09:40:11',
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '-',
-    status: '1',
-    arrStatus: '待复核',
-  },
-  {
-    arrNo: 'PP202602100101',
-    arrDate: '2026/02/10',
-    opType: '3',
-    operType: '注销',
-    deptName: '风控管理部',
-    postName: '风控审核岗',
-    postType: '内部',
-    postStatus: '注销',
-    remark: '注销岗位申请',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/10 09:00:00',
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '2026/02/10 09:30:00',
-    status: '4',
-    arrStatus: '已撤销',
-  },
-])
+const list = ref<any[]>([])
+const loading = ref(false)
 
-const postStatusLabelMap: Record<string, string> = {
+const statusLabelMap: Record<string, string> = {
   '1': '待复核',
+  '2': '复核通过',
   '3': '复核拒绝',
   '4': '已撤销',
+  PENDING: '待复核',
+  APPROVED: '复核通过',
+  REJECTED: '复核拒绝',
+  REVOKED: '已撤销',
+  CANCELED: '已撤销',
 }
 
-const fillPostPendingList = () => {
-  const statuses = ['1', '3', '4']
-  while (list.value.length < 10) {
-    const idx = list.value.length + 1
-    const status = statuses[idx % statuses.length]
-    list.value.push({
-      arrNo: `PP${todayStr.replaceAll('/', '')}${String(idx).padStart(3, '0')}`,
-      arrDate: todayStr,
-      opType: '1',
-      operType: '新增',
-      deptName: '清算管理部',
-      postName: `今日岗位${idx}`,
-      postType: '内部',
-      postStatus: status === '4' ? '注销' : '正常',
-      remark: status === '3' ? '复核拒绝示例' : status === '4' ? '已撤销示例' : '待复核示例',
-      arrOperName: idx % 2 === 0 ? 'superadmin' : 'auditor01',
-      applyTime: `${todayStr} 10:${String(idx).padStart(2, '0')}:00`,
-      reviewOperName: '-',
-      reviewTime: '-',
-      revokeTime: status === '4' ? `${todayStr} 11:${String(idx).padStart(2, '0')}:00` : '-',
-      status,
-      arrStatus: postStatusLabelMap[status],
-    })
+const statusCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  PENDING: '1',
+  APPROVED: '2',
+  REJECTED: '3',
+  REVOKED: '4',
+  CANCELED: '4',
+}
+
+const statusTypeMap: Record<string, string> = {
+  '1': 'PENDING',
+  '2': 'APPROVED',
+  '3': 'REJECTED',
+  '4': 'REVOKED',
+}
+
+const opTypeLabelMap: Record<string, string> = {
+  '1': '新增',
+  '2': '修改',
+  '3': '注销',
+  CREATE: '新增',
+  UPDATE: '修改',
+  MODIFY: '修改',
+  CANCEL: '注销',
+}
+
+const opTypeCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  CREATE: '1',
+  UPDATE: '2',
+  MODIFY: '2',
+  CANCEL: '3',
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '-'
+  return value.replace('T', ' ').replaceAll('-', '/')
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return '-'
+  return formatDateTime(value).split(' ')[0]
+}
+
+const normalizeApply = (item: any) => {
+  const rawStatus = item.status ?? item.applyStatus ?? item.arrStatus ?? ''
+  const rawOpType = item.operationType ?? item.opType ?? item.operType ?? ''
+  const statusCode = statusCodeMap[rawStatus] ?? rawStatus ?? ''
+  const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
+  return {
+    id: item.id,
+    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrDate: formatDate(item.applyTime ?? item.arrDate),
+    opType: opTypeCode,
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
+    deptName: item.deptName ?? '-',
+    postName: item.positionName ?? item.postName ?? '-',
+    postType: item.postType ?? '内部',
+    postStatus: item.positionStatus ?? item.postStatus ?? '-',
+    remark: item.remark ?? item.deptRemark ?? '-',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    applyTime: formatDateTime(item.applyTime ?? item.applyTime),
+    reviewOperName: item.reviewOperName ?? '-',
+    reviewTime: formatDateTime(item.reviewTime),
+    revokeTime: formatDateTime(item.revokeTime),
+    status: statusCode,
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
   }
 }
 
-fillPostPendingList()
+const buildQueryParams = () => {
+  const startDate = queryForm.value.startDate?.replaceAll('/', '-')
+  const endDate = queryForm.value.endDate?.replaceAll('/', '-')
+  const statusType =
+    queryForm.value.status !== 'all' ? statusTypeMap[queryForm.value.status] : undefined
+  const operationType =
+    queryForm.value.opType !== 'all'
+      ? ({ '1': 'CREATE', '2': 'UPDATE', '3': 'CANCEL' } as Record<string, string>)[
+          queryForm.value.opType
+        ]
+      : undefined
+  return {
+    startDate,
+    endDate,
+    applyNo: queryForm.value.arrNo || undefined,
+    positionName: queryForm.value.postName || undefined,
+    operationType,
+    statusType,
+  }
+}
+
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const response = await getPositionApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    list.value = (items ?? []).map(normalizeApply)
+  } catch (error) {
+    list.value = []
+    ElMessage.error('获取岗位申请列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const toDate = (value: string) => {
   if (!value) return null
-  const parts = value.split('/')
+  const normalized = value.replaceAll('-', '/')
+  const parts = normalized.split('/')
   if (parts.length !== 3) return null
-  const [y, m, d] = parts.map(Number)
+  const y = Number(parts[0])
+  const m = Number(parts[1])
+  const d = Number(parts[2])
+  if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null
   return new Date(y, m - 1, d)
 }
 
@@ -312,6 +339,7 @@ const pagedList = computed(() => {
 
 const handleQuery = () => {
   currentPage.value = 1
+  fetchList()
 }
 
 const handleReset = () => {
@@ -324,10 +352,27 @@ const handleReset = () => {
     status: 'all',
   }
   currentPage.value = 1
+  fetchList()
 }
 
-const handleDownload = () => {
-  ElMessage.success('下载成功')
+const downloadBlob = (data: Blob, filename: string) => {
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const handleDownload = async () => {
+  try {
+    const response = await exportPositionApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const blob = payload instanceof Blob ? payload : new Blob([payload])
+    downloadBlob(blob, `岗位申请_${todayStr.replaceAll('/', '')}.xlsx`)
+  } catch (error) {
+    ElMessage.error('下载失败')
+  }
 }
 
 const dialogVisible = ref(false)
@@ -345,46 +390,10 @@ const editRules = {
   postName: [{ required: true, message: '请录入岗位名称', trigger: 'blur' }],
 }
 
-const authTree = ref([
-  {
-    id: 'A1',
-    label: '系统管理',
-    children: [
-      { id: 'A1-1', label: '部门维护' },
-      { id: 'A1-2', label: '用户维护' },
-    ],
-  },
-  {
-    id: 'A2',
-    label: '安全管理',
-    children: [
-      { id: 'A2-1', label: '权限刷新' },
-      { id: 'A2-2', label: '审计日志' },
-    ],
-  },
-])
-
-const operateTree = ref([
-  {
-    id: 'O1',
-    label: '清算管理',
-    children: [
-      { id: 'O1-1', label: '查询' },
-      { id: 'O1-2', label: '新增' },
-    ],
-  },
-  {
-    id: 'O2',
-    label: '运营服务',
-    children: [
-      { id: 'O2-1', label: '导出' },
-      { id: 'O2-2', label: '注销' },
-    ],
-  },
-])
-
-const authChecked = ref<string[]>(['A1-1'])
-const operateChecked = ref<string[]>(['O1-1'])
+const authTree = ref<any[]>([])
+const operateTree = ref<any[]>([])
+const authChecked = ref<string[]>([])
+const operateChecked = ref<string[]>([])
 
 const canRevoke = (row: any) => row.status === '1' && row.arrOperName === currentUser
 const canReview = (row: any) => row.status === '1' && row.arrOperName !== currentUser && row.opType !== '3'
@@ -422,12 +431,24 @@ const handleReviewSave = (payload: typeof editForm.value & { operateKeys: string
     return
   }
 
-  currentRow.value.status = '2'
-  currentRow.value.arrStatus = '复核通过'
-  currentRow.value.reviewOperName = currentUser
-  currentRow.value.reviewTime = todayStr + ' 10:30:00'
-  ElMessage.success('操作成功')
-  dialogVisible.value = false
+  reviewPositionApplication(currentRow.value.id, {
+    approved: true,
+    reviewerName: currentUser,
+    reviewRemark: '',
+  })
+    .then(() => {
+      currentRow.value.status = '2'
+      currentRow.value.arrStatus = '复核通过'
+      currentRow.value.reviewOperName = currentUser
+      currentRow.value.reviewTime = todayStr + ' 10:30:00'
+      ElMessage.success('操作成功')
+    })
+    .catch(() => {
+      ElMessage.error('复核失败')
+    })
+    .finally(() => {
+      dialogVisible.value = false
+    })
 }
 
 const handleRevoke = (row: any) => {
@@ -439,11 +460,21 @@ const handleRevoke = (row: any) => {
     }
     return
   }
-  row.status = '4'
-  row.arrStatus = '已撤销'
-  row.revokeTime = todayStr + ' 11:00:00'
-  ElMessage.success('操作成功')
+  revokePositionApplication(row.id)
+    .then(() => {
+      row.status = '4'
+      row.arrStatus = '已撤销'
+      row.revokeTime = todayStr + ' 11:00:00'
+      ElMessage.success('操作成功')
+    })
+    .catch(() => {
+      ElMessage.error('撤销失败')
+    })
 }
+
+onMounted(() => {
+  fetchList()
+})
 </script>
 
 <style scoped lang="scss">
@@ -459,8 +490,8 @@ const handleRevoke = (row: any) => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -476,8 +507,8 @@ const handleRevoke = (row: any) => {
 .query-form :deep(.el-select__wrapper),
 .query-form :deep(.el-date-editor) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-form :deep(.el-date-editor) {
@@ -568,17 +599,17 @@ const handleRevoke = (row: any) => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 .table-pagination {
@@ -594,19 +625,19 @@ const handleRevoke = (row: any) => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .tree-disabled {
@@ -617,7 +648,7 @@ const handleRevoke = (row: any) => {
 .tree-disabled :deep(.el-tree-node__content),
 .tree-disabled :deep(.el-tree-node__label),
 .tree-disabled :deep(.el-checkbox__label) {
-  color: #a8abb2;
+  color: var(--app-text-muted);
 }
 
 .tree-disabled :deep(.el-tree-node__content:hover) {
@@ -626,13 +657,13 @@ const handleRevoke = (row: any) => {
 
 .tree-disabled :deep(.el-checkbox__input.is-checked .el-checkbox__inner),
 .tree-disabled :deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
-  background-color: #dcdfe6;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg);
+  border-color: var(--app-disabled-bg);
 }
 
 .tree-disabled :deep(.el-checkbox__input .el-checkbox__inner) {
-  background-color: #f5f7fa;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg-light);
+  border-color: var(--app-disabled-bg);
 }
 
 @media (max-width: 1200px) {
@@ -654,7 +685,7 @@ const handleRevoke = (row: any) => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 
 </style>

@@ -151,19 +151,19 @@ const handleSave = async () => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .tree-disabled {
@@ -173,7 +173,7 @@ const handleSave = async () => {
 
 .tree-disabled :deep(.el-tree-node__content),
 .tree-disabled :deep(.el-tree-node__label) {
-  color: #a8abb2;
+  color: var(--app-text-muted);
 }
 
 .tree-disabled :deep(.el-tree-node__content:hover) {
@@ -182,13 +182,13 @@ const handleSave = async () => {
 
 .tree-disabled :deep(.el-checkbox__input.is-checked .el-checkbox__inner),
 .tree-disabled :deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
-  background-color: #dcdfe6;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg);
+  border-color: var(--app-disabled-bg);
 }
 
 .tree-disabled :deep(.el-checkbox__input .el-checkbox__inner) {
-  background-color: #f5f7fa;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg-light);
+  border-color: var(--app-disabled-bg);
 }
 
 @media (max-width: 1200px) {

@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia'
+﻿import { defineStore } from 'pinia'
 import type {
   DeptListQuery,
   DeptApplicationPayload,
@@ -35,8 +35,35 @@ export const useDepartmentStore = defineStore('department', {
       this.loading = true
       try {
         const res: any = await getDepartmentList(params)
-        const data = res?.data ?? res
-        this.list = Array.isArray(data) ? data : data?.list || []
+        const payload = res?.data ?? res
+        const rawList = Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload)
+            ? payload
+            : payload?.list || []
+        const toStatus = (value: string) => {
+          if (value === 'NORMAL') return '1'
+          if (value === 'CANCELED') return '2'
+          return value
+        }
+        const toDeptStatus = (value: string) => {
+          if (value === '1') return 'NORMAL'
+          if (value === '2') return 'CANCELED'
+          return value
+        }
+        this.list = rawList.map((item: any) => ({
+          id: String(item.id ?? ''),
+          deptName: item.deptName ?? item.name ?? '',
+          remark: item.remark ?? '',
+          status: toStatus(item.deptStatus ?? item.status ?? ''),
+          deptStatus: item.deptStatus ?? toDeptStatus(item.status ?? ''),
+          createdOperName: item.createdOperName ?? '',
+          createdAt: item.createdAt ?? '',
+          updatedOperName: item.updatedOperName ?? '',
+          updatedAt: item.updatedAt ?? '',
+          reviewOperName: item.reviewOperName ?? '',
+          reviewTime: item.reviewTime ?? '',
+        }))
       } finally {
         this.loading = false
       }
@@ -122,3 +149,4 @@ export const useDepartmentStore = defineStore('department', {
     },
   },
 })
+

@@ -41,8 +41,8 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table ref="tableRef" :data="filteredList" border stripe class="dept-table">
-          <el-table-column type="index" label="序号" width="70" fixed="left" />
+        <el-table ref="tableRef" :data="filteredList" border stripe class="dept-table" table-layout="auto">
+          <el-table-column class-name="action-col" type="index" label="序号" width="70" fixed="left" />
 
 
 
@@ -54,7 +54,7 @@
               <span v-else>{{ row.deptName }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="operCode" label="用户名" min-width="120" />
+          <el-table-column class-name="action-col" prop="operCode" label="用户名" min-width="120" />
 <el-table-column prop="operName" label="用户姓名" min-width="120" />
 <el-table-column prop="telPhone" label="办公电话" min-width="140" />
 <el-table-column prop="mobile" label="手机" min-width="140" />
@@ -67,21 +67,21 @@
               <span v-else>{{ row.remark || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="inputOperName" label="录入人" min-width="120" />
-<el-table-column prop="inputTime" label="录入时间" min-width="170" />
-<el-table-column prop="updateOperName" label="更新人" min-width="120" />
-<el-table-column prop="updateTime" label="更新时间" min-width="170" />
+          <el-table-column class-name="action-col" prop="createdOperName" label="录入人" min-width="120" />
+<el-table-column prop="createdAt" label="录入时间" min-width="170" />
+<el-table-column prop="updatedOperName" label="更新人" min-width="120" />
+<el-table-column prop="updatedAt" label="更新时间" min-width="170" />
 <el-table-column prop="reviewOperName" label="复核人" min-width="120" />
 <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
-          <el-table-column class-name="action-col" label="操作" min-width="360" fixed="right">
+          <el-table-column class-name="action-col action-col--ops" label="操作" width="1" fixed="right">
 <template #default="{ row }">
-              <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
-              <el-button link type="primary" @click="openEditDialog(row)" :disabled="!canEdit(row)">修改</el-button>
-              <el-button link type="warning" @click="handleFreeze(row)" :disabled="!canFreeze(row)">冻结</el-button>
-              <el-button link type="success" @click="handleUnfreeze(row)" :disabled="!canUnfreeze(row)">解冻</el-button>
-              <el-button link type="danger" @click="handleLogout(row)" :disabled="!canLogout(row)">注销</el-button>
-              <el-button link type="primary" @click="handleResetPwd(row)" :disabled="!canResetPwd(row)">重置密码</el-button>
-              <el-button link type="primary" @click="openBindDialog(row)" :disabled="!canBind(row)">绑定证书</el-button>
+              <el-button link size="small" type="primary" @click="openDetailDialog(row)">详情</el-button>
+              <el-button link size="small" type="primary" @click="openEditDialog(row)" :disabled="!canEdit(row)">修改</el-button>
+              <el-button link size="small" type="warning" @click="handleFreeze(row)" :disabled="!canFreeze(row)">冻结</el-button>
+              <el-button link size="small" type="success" @click="handleUnfreeze(row)" :disabled="!canUnfreeze(row)">解冻</el-button>
+              <el-button link size="small" type="danger" @click="handleLogout(row)" :disabled="!canLogout(row)">注销</el-button>
+              <el-button link size="small" type="primary" @click="handleResetPwd(row)" :disabled="!canResetPwd(row)">重置密码</el-button>
+              <el-button link size="small" type="primary" @click="openBindDialog(row)" :disabled="!canBind(row)">绑定证书</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -176,17 +176,13 @@
           <el-button @click="handleBindReset">重置</el-button>
         </div>
       </el-form>
-      <el-table ref="tableRef" :data="bindTable" border stripe>
+      <el-table ref="tableRef" :data="bindTable" border stripe @selection-change="handleBindSelectionChange">
           <el-table-column type="index" label="序号" width="70" fixed="left" />
 
 
 <el-table-column type="selection" width="55" />
-<el-table-column prop="certDN" label="证书DN" min-width="260" />
-<el-table-column prop="certOrg" label="持证机构" min-width="180" />
-<el-table-column prop="certAlgorithm" label="证书算法" min-width="100" />
-<el-table-column prop="certStatus" label="证书状态" min-width="100" />
-<el-table-column prop="validStartDate" label="有效期开始" min-width="120" />
-<el-table-column prop="validEndDate" label="有效期结束" min-width="120" />
+<el-table-column prop="certNo" label="证书编号" min-width="260" />
+<el-table-column prop="certName" label="证书名称" min-width="180" />
 </el-table>
       <template #footer>
         <el-button @click="bindVisible = false">取消</el-button>
@@ -197,11 +193,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import {
+  bindAdminCert,
+  cancelAdmin,
+  createAdmin,
+  exportAdmins,
+  freezeAdmin,
+  getAdminCertificates,
+  getAdminDetail,
+  getAdminList,
+  getAdminPermissions,
+  modifyAdmin,
+  resetAdminPassword,
+  unfreezeAdmin,
+} from '@/api/userAdmin'
 
 type StatusValue = '1' | '2' | '3' | '4' | ''
-
 type UserRow = {
   id: string
   deptName: string
@@ -212,14 +221,15 @@ type UserRow = {
   status: StatusValue
   operStatus: string
   remark: string
-  inputOperName: string
-  inputTime: string
-  updateOperName: string
-  updateTime: string
+  createdOperName: string
+  createdAt: string
+  updatedOperName: string
+  updatedAt: string
   reviewOperName: string
   reviewTime: string
   isSelf?: boolean
 }
+type CertOption = { certId: number; certNo: string; certName: string; selected?: boolean }
 
 const statusOptions = [
   { value: '1', label: '正常' },
@@ -228,144 +238,140 @@ const statusOptions = [
   { value: '4', label: '密码重置' },
 ]
 
-const deptOptions = ['清算管理部', '技术保障部', '风控管理部']
+const queryForm = ref({ operCode: '', operName: '', operStatus: '' as StatusValue })
+const list = ref<UserRow[]>([])
+const dialogVisible = ref(false)
+const dialogMode = ref<'add' | 'edit' | 'detail'>('add')
+const currentRow = ref<UserRow | null>(null)
 
-const queryForm = ref({
-  operCode: '',
-  operName: '',
-  operStatus: '' as StatusValue,
-})
+const statusCodeMap: Record<string, StatusValue> = {
+  NORMAL: '1',
+  FROZEN: '2',
+  CANCELED: '3',
+  PASSWORD_RESET: '4',
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+}
+const statusLabelMap: Record<string, string> = {
+  NORMAL: '正常',
+  FROZEN: '冻结',
+  CANCELED: '注销',
+  PASSWORD_RESET: '密码重置',
+  '1': '正常',
+  '2': '冻结',
+  '3': '注销',
+  '4': '密码重置',
+}
 
-const today = new Date()
-const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-const todayStr = `${today.getFullYear()}/${pad(today.getMonth() + 1)}/${pad(today.getDate())}`
-const now = '2026/02/09 13:30:00'
-const list = ref<UserRow[]>([
-  {
-    id: `U${todayStr.replaceAll('/', '')}01`,
-    deptName: '清算管理部',
-    operCode: 'deptadminToday',
-    operName: '今日新增',
-    telPhone: '021-55550010',
-    mobile: '13800001000',
-    operStatus: '密码重置',
-    remark: '今日新增部门管理员',
-    inputOperName: 'superadmin',
-    inputTime: `${todayStr} 09:30:00`,
-    updateOperName: 'superadmin',
-    updateTime: `${todayStr} 09:30:00`,
-    reviewOperName: 'auditor01',
-    reviewTime: `${todayStr} 10:00:00`,
-  },
-  {
-    id: 'U1001',
-    deptName: '清算管理部',
-    operCode: 'deptadmin01',
-    operName: '王宁',
-    telPhone: '021-55550001',
-    mobile: '13800000001',
-    operStatus: '正常',
-    remark: '负责清算管理部日常维护',
-    inputOperName: 'superadmin',
-    inputTime: now,
-    updateOperName: 'superadmin',
-    updateTime: now,
-    reviewOperName: 'auditor01',
-    reviewTime: now,
-  },
-  {
-    id: 'U1002',
-    deptName: '技术保障部',
-    operCode: 'deptadmin02',
-    operName: '李娜',
-    telPhone: '021-55550002',
-    mobile: '13800000002',
-    operStatus: '冻结',
-    remark: '临时冻结',
-    inputOperName: 'superadmin',
-    inputTime: now,
-    updateOperName: 'superadmin',
-    updateTime: now,
-    reviewOperName: 'auditor01',
-    reviewTime: now,
-  },
-  {
-    id: 'U1003',
-    deptName: '风控管理部',
-    operCode: 'deptadmin03',
-    operName: '赵敏',
-    telPhone: '021-55550003',
-    mobile: '13800000003',
-    operStatus: '密码重置',
-    remark: '密码重置',
-    inputOperName: 'superadmin',
-    inputTime: now,
-    updateOperName: 'superadmin',
-    updateTime: now,
-    reviewOperName: 'auditor01',
-    reviewTime: now,
-  },
-])
-
-const fillUserAdminList = () => {
-  const statuses: StatusValue[] = ['1', '2', '3', '4']
-  const statusLabelMap: Record<string, string> = {
-    '1': '正常',
-    '2': '冻结',
-    '3': '注销',
-    '4': '密码重置',
+const getDeptId = () => {
+  const raw = localStorage.getItem('deptId')
+  const val = raw ? Number(raw) : NaN
+  return Number.isFinite(val) && val > 0 ? val : undefined
+}
+const getDeptName = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.deptName ?? localStorage.getItem('deptName') ?? '默认部门')
+  } catch {
+    return String(localStorage.getItem('deptName') ?? '默认部门')
   }
-  while (list.value.length < 10) {
-    const idx = list.value.length + 1
-    const status = statuses[idx % statuses.length]
-    list.value.push({
-      id: `U${todayStr.replaceAll('/', '')}${String(idx).padStart(2, '0')}`,
-      deptName: '清算管理部',
-      operCode: `deptadmin${idx}`,
-      operName: `管理员${idx}`,
-      telPhone: '021-55550010',
-      mobile: `13800001${String(idx).padStart(3, '0')}`,
-      status,
-      operStatus: statusLabelMap[status],
-      remark: '今日新增账号',
-      inputOperName: 'superadmin',
-      inputTime: `${todayStr} 11:${String(idx).padStart(2, '0')}:00`,
-      updateOperName: 'superadmin',
-      updateTime: `${todayStr} 11:${String(idx).padStart(2, '0')}:00`,
-      reviewOperName: 'auditor01',
-      reviewTime: `${todayStr} 12:${String(idx).padStart(2, '0')}:00`,
-    })
+}
+const getApplicantInfo = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return {
+      applicantId: Number(user?.id ?? 1),
+      applicantName: String(user?.name ?? user?.username ?? 'admin'),
+      applicantDeptId: Number(user?.deptId ?? getDeptId() ?? 1),
+      applicantDeptName: String(user?.deptName ?? editForm.value.deptName ?? getDeptName()),
+    }
+  } catch {
+    return {
+      applicantId: 1,
+      applicantName: 'admin',
+      applicantDeptId: Number(getDeptId() ?? 1),
+      applicantDeptName: String(editForm.value.deptName || getDeptName()),
+    }
   }
 }
 
-fillUserAdminList()
-
-const filteredList = computed(() => {
-  return list.value.filter((item) => {
-    if (queryForm.value.operCode && !item.operCode.includes(queryForm.value.operCode)) return false
-    if (queryForm.value.operName && !item.operName.includes(queryForm.value.operName)) return false
-    if (queryForm.value.status && item.status !== queryForm.value.status) return false
-    return true
-  })
-})
-
-const handleQuery = () => {
-  // mock
+const formatDateTime = (value?: string) => {
+  if (!value) return '-'
+  return value.replace('T', ' ').replaceAll('-', '/')
+}
+const normalizeAdmin = (item: any): UserRow => {
+  const rawStatus = item.status ?? ''
+  const status = statusCodeMap[rawStatus] ?? '1'
+  return {
+    id: String(item.id ?? ''),
+    deptName: item.deptName ?? '-',
+    operCode: item.username ?? '-',
+    operName: item.fullName ?? '-',
+    telPhone: item.officePhone ?? '-',
+    mobile: item.mobilePhone ?? '-',
+    status,
+    operStatus: statusLabelMap[rawStatus] ?? statusLabelMap[status] ?? '-',
+    remark: item.remark ?? '-',
+    createdOperName: item.createdOperName ?? '-',
+    createdAt: formatDateTime(item.createdAt),
+    updatedOperName: item.updatedOperName ?? '-',
+    updatedAt: formatDateTime(item.updatedAt),
+    reviewOperName: item.reviewOperName ?? '-',
+    reviewTime: formatDateTime(item.reviewTime),
+    isSelf: false,
+  }
+}
+const buildQueryParams = () => {
+  const statusMap: Record<string, string> = { '1': 'NORMAL', '2': 'FROZEN', '3': 'CANCELED', '4': 'PASSWORD_RESET' }
+  return {
+    deptId: getDeptId(),
+    username: queryForm.value.operCode || undefined,
+    fullName: queryForm.value.operName || undefined,
+    status: queryForm.value.operStatus ? statusMap[queryForm.value.operStatus] : undefined,
+  }
+}
+const fetchList = async () => {
+  try {
+    const response = await getAdminList(buildQueryParams())
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    list.value = (items ?? []).map(normalizeAdmin)
+  } catch {
+    list.value = []
+    ElMessage.error('获取管理员列表失败')
+  }
 }
 
+const filteredList = computed(() => list.value)
+const handleQuery = () => fetchList()
 const handleReset = () => {
   queryForm.value = { operCode: '', operName: '', operStatus: '' }
+  fetchList()
+}
+const downloadBlob = (data: Blob, filename: string) => {
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+const handleDownload = async () => {
+  try {
+    const response = await exportAdmins(buildQueryParams())
+    const payload = response?.data ?? response
+    const blob = payload instanceof Blob ? payload : new Blob([payload])
+    downloadBlob(blob, `管理员查询_${new Date().getTime()}.xlsx`)
+  } catch {
+    ElMessage.error('下载失败')
+  }
 }
 
-const handleDownload = () => {
-  ElMessage.success('下载成功')
-}
-
-const truncateText = (text: string, size: number) => {
-  if (!text) return '-'
-  return text.length > size ? `${text.slice(0, size)}…` : text
-}
-
+const truncateText = (text: string, size: number) => (!text ? '-' : text.length > size ? `${text.slice(0, size)}…` : text)
 const canEdit = (row: UserRow) => ['1', '4'].includes(row.status)
 const canFreeze = (row: UserRow) => row.status === '1' && !row.isSelf
 const canUnfreeze = (row: UserRow) => row.status === '2' && !row.isSelf
@@ -373,250 +379,233 @@ const canResetPwd = (row: UserRow) => row.status === '1' && !row.isSelf
 const canLogout = (row: UserRow) => ['1', '4'].includes(row.status) && !row.isSelf
 const canBind = (row: UserRow) => ['1', '4'].includes(row.status)
 
-const dialogVisible = ref(false)
-const dialogMode = ref<'add' | 'edit' | 'detail'>('add')
-const currentRow = ref<UserRow | null>(null)
-
+type EditForm = {
+  deptName: string
+  operCode: string
+  operName: string
+  telPhone: string
+  mobile: string
+  userType: string
+  status: StatusValue
+  remark: string
+}
 const editFormRef = ref()
-const editForm = ref({
-  deptName: deptOptions[0],
+const editForm = ref<EditForm>({
+  deptName: getDeptName(),
   operCode: '',
   operName: '',
   telPhone: '',
   mobile: '',
   userType: '2',
+  status: '4',
   remark: '',
 })
-
 const editRules = {
-  deptName: [{ required: true, message: '请选择部门名称', trigger: 'change' }],
   operCode: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   operName: [{ required: true, message: '请输入用户姓名', trigger: 'blur' }],
 }
 
-const authTree = ref([
-  {
-    id: 'A1',
-    label: '清算管理',
-    children: [
-      { id: 'A1-1', label: '查询' },
-      { id: 'A1-2', label: '新增' },
-    ],
-  },
-])
+const authTree = ref<any[]>([])
+const operateTree = ref<any[]>([])
+const authChecked = ref<string[]>([])
+const operateChecked = ref<string[]>([])
+const operateTreeRef = ref()
+const authTreeRef = ref()
+const deptOptions = computed(() => (editForm.value.deptName ? [editForm.value.deptName] : [getDeptName()]))
 
-const operateTree = ref([
-  {
-    id: 'O1',
-    label: '系统管理',
-    children: [
-      { id: 'O1-1', label: '部门维护' },
-      { id: 'O1-2', label: '用户维护' },
-    ],
-  },
-])
-
-const authChecked = ref<string[]>(['A1-1'])
-const operateChecked = ref<string[]>(['O1-1'])
+const toTree = (scopes: any[], rootId: string, rootLabel: string) => {
+  const children = (scopes ?? []).map((item: any) => ({ id: String(item.scopeCode), label: item.scopeName ?? item.scopeCode }))
+  return children.length ? [{ id: rootId, label: rootLabel, children }] : []
+}
+const loadPermissions = async (id: string) => {
+  try {
+    const response = await getAdminPermissions(id, { deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const data = payload?.data ?? payload
+    authTree.value = toTree(data?.authScopes ?? [], 'AUTH', '授权范围')
+    operateTree.value = toTree(data?.operScopes ?? [], 'OPER', '操作范围')
+    authChecked.value = (data?.authScopes ?? []).map((x: any) => String(x.scopeCode))
+    operateChecked.value = (data?.operScopes ?? []).map((x: any) => String(x.scopeCode))
+    nextTick(() => {
+      authTreeRef.value?.setCheckedKeys?.(authChecked.value)
+      operateTreeRef.value?.setCheckedKeys?.(operateChecked.value)
+    })
+  } catch {
+    authTree.value = []
+    operateTree.value = []
+    authChecked.value = []
+    operateChecked.value = []
+  }
+}
+const fillEditByRow = async (row: UserRow) => {
+  try {
+    const response = await getAdminDetail(row.id, { deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const data = payload?.data ?? payload
+    editForm.value = {
+      deptName: data?.deptName ?? row.deptName,
+      operCode: data?.username ?? row.operCode,
+      operName: data?.fullName ?? row.operName,
+      telPhone: data?.officePhone ?? row.telPhone,
+      mobile: data?.mobilePhone ?? row.mobile,
+      userType: String(data?.userType ?? '2'),
+      status: statusCodeMap[data?.status] ?? row.status,
+      remark: data?.remark ?? row.remark,
+    }
+  } catch {
+    editForm.value = {
+      deptName: row.deptName,
+      operCode: row.operCode,
+      operName: row.operName,
+      telPhone: row.telPhone,
+      mobile: row.mobile,
+      userType: '2',
+      status: row.status,
+      remark: row.remark,
+    }
+  }
+}
 
 const openAddDialog = () => {
   dialogMode.value = 'add'
-  editForm.value = {
-    deptName: deptOptions[0],
-    operCode: '',
-    operName: '',
-    telPhone: '',
-    mobile: '',
-    userType: '2',
-    remark: '',
-  }
+  currentRow.value = null
+  editForm.value = { deptName: getDeptName(), operCode: '', operName: '', telPhone: '', mobile: '', userType: '2', status: '4', remark: '' }
+  authTree.value = []
+  operateTree.value = []
   authChecked.value = []
   operateChecked.value = []
   dialogVisible.value = true
-  nextTick(() => {
-    operateTreeRef.value?.setCheckedKeys?.([])
-    authTreeRef.value?.setCheckedKeys?.([])
-  })
 }
-
-const openEditDialog = (row: UserRow) => {
+const openEditDialog = async (row: UserRow) => {
   dialogMode.value = 'edit'
   currentRow.value = row
-  editForm.value = {
-    deptName: row.deptName,
-    operCode: row.operCode,
-    operName: row.operName,
-    telPhone: row.telPhone,
-    mobile: row.mobile,
-    userType: '2',
-    status: row.status,
-    remark: row.remark,
-  }
-  authChecked.value = ['A1-1']
-  operateChecked.value = ['O1-1']
+  await fillEditByRow(row)
+  await loadPermissions(row.id)
   dialogVisible.value = true
-  nextTick(() => {
-    operateTreeRef.value?.setCheckedKeys?.(operateChecked.value)
-    authTreeRef.value?.setCheckedKeys?.(authChecked.value)
-  })
 }
-
-const openDetailDialog = (row: UserRow) => {
+const openDetailDialog = async (row: UserRow) => {
   dialogMode.value = 'detail'
   currentRow.value = row
-  editForm.value = {
-    deptName: row.deptName,
-    operCode: row.operCode,
-    operName: row.operName,
-    telPhone: row.telPhone,
-    mobile: row.mobile,
-    userType: '2',
-    status: row.status,
-    remark: row.remark,
-  }
-  authChecked.value = ['A1-1']
-  operateChecked.value = ['O1-1']
+  await fillEditByRow(row)
+  await loadPermissions(row.id)
   dialogVisible.value = true
-  nextTick(() => {
-    operateTreeRef.value?.setCheckedKeys?.(operateChecked.value)
-    authTreeRef.value?.setCheckedKeys?.(authChecked.value)
-  })
 }
 
 const handleSaveEdit = async () => {
   if (!editFormRef.value || dialogMode.value === 'detail') return
   try {
     await editFormRef.value.validate()
-    const authKeys = authTreeRef.value?.getCheckedKeys?.() || []
-    const operateKeys = operateTreeRef.value?.getCheckedKeys?.() || []
-    if (authKeys.length === 0) {
-      ElMessage.error('请指定部门的可授权范围')
-      return
-    }
-    if (operateKeys.length === 0) {
-      ElMessage.error('请指定部门的可操作范围')
-      return
-    }
-
-    const exists = list.value.some((item) => item.operCode === editForm.value.operCode)
-    if (dialogMode.value === 'add' && exists) {
-      ElMessage.error('用户名已经存在，请查证后重新录入')
-      return
-    }
-
+    const deptId = getDeptId()
+    if (!deptId) return
+    const applicant = getApplicantInfo()
     if (dialogMode.value === 'add') {
-      list.value.unshift({
-        id: `U${Math.floor(Math.random() * 9000 + 1000)}`,
+      await createAdmin({
+        deptId,
         deptName: editForm.value.deptName,
-        operCode: editForm.value.operCode,
-        operName: editForm.value.operName,
-        telPhone: editForm.value.telPhone,
-        mobile: editForm.value.mobile,
-        operStatus: '密码重置',
+        username: editForm.value.operCode,
+        fullName: editForm.value.operName,
+        officePhone: editForm.value.telPhone,
+        mobilePhone: editForm.value.mobile,
         remark: editForm.value.remark,
-        inputOperName: 'superadmin',
-        inputTime: now,
-        updateOperName: 'superadmin',
-        updateTime: now,
-        reviewOperName: '',
-        reviewTime: '',
+        ...applicant,
       })
-    } else if (currentRow.value) {
-      currentRow.value.operName = editForm.value.operName
-      currentRow.value.telPhone = editForm.value.telPhone
-      currentRow.value.mobile = editForm.value.mobile
-      currentRow.value.remark = editForm.value.remark
-      currentRow.value.updateOperName = 'superadmin'
-      currentRow.value.updateTime = now
+    } else {
+      if (!currentRow.value) return
+      await modifyAdmin(currentRow.value.id, {
+        deptId,
+        deptName: editForm.value.deptName,
+        fullName: editForm.value.operName,
+        officePhone: editForm.value.telPhone,
+        mobilePhone: editForm.value.mobile,
+        remark: editForm.value.remark,
+        ...applicant,
+      })
     }
-
     ElMessage.success('操作成功')
     dialogVisible.value = false
+    fetchList()
   } catch {
-    ElMessage.error('请检查必填项')
+    ElMessage.error('操作失败')
   }
 }
 
-const handleFreeze = (row: UserRow) => {
-  if (!canFreeze(row)) {
-    ElMessage.error('用户不能变更自己的状态')
-    return
+const submitAction = async (row: UserRow, action: (id: string, data: any) => Promise<any>, nextStatus: StatusValue, nextLabel: string) => {
+  try {
+    await action(row.id, { deptId: getDeptId(), deptName: row.deptName, ...getApplicantInfo() })
+    row.status = nextStatus
+    row.operStatus = nextLabel
+    ElMessage.success('操作成功')
+    fetchList()
+  } catch {
+    ElMessage.error('操作失败')
   }
-  row.status = '2'
-  row.operStatus = '冻结'
-  ElMessage.success('操作成功')
 }
-
-const handleUnfreeze = (row: UserRow) => {
-  if (!canUnfreeze(row)) {
-    ElMessage.error('该用户状态已是非冻结状态不能进行解冻操作')
-    return
-  }
-  row.status = '1'
-  row.operStatus = '正常'
-  ElMessage.success('操作成功')
-}
-
-const handleResetPwd = (row: UserRow) => {
-  if (!canResetPwd(row)) {
-    ElMessage.error('该用户状态已是非正常状态不能进行重置密码操作')
-    return
-  }
-  row.status = '4'
-  row.operStatus = '密码重置'
-  ElMessage.success('操作成功')
-}
-
-const handleLogout = (row: UserRow) => {
-  if (!canLogout(row)) {
-    ElMessage.error('用户状态不允许注销')
-    return
-  }
-  row.status = '3'
-  row.operStatus = '注销'
-  ElMessage.success('操作成功')
-}
-
-const handleBind = (row: UserRow) => {
-  openBindDialog(row)
-}
+const handleFreeze = (row: UserRow) => canFreeze(row) && submitAction(row, freezeAdmin as any, '2', '冻结')
+const handleUnfreeze = (row: UserRow) => canUnfreeze(row) && submitAction(row, unfreezeAdmin as any, '1', '正常')
+const handleResetPwd = (row: UserRow) => canResetPwd(row) && submitAction(row, resetAdminPassword as any, '4', '密码重置')
+const handleLogout = (row: UserRow) => canLogout(row) && submitAction(row, cancelAdmin as any, '3', '注销')
 
 const bindVisible = ref(false)
 const bindQuery = ref({ certDN: '' })
-const bindTable = ref([
-  {
-    certDN: 'CN=cert-001,OU=SHCH,O=SHCH',
-    certOrg: '000001/清算管理部',
-    certAlgorithm: 'SM2',
-    certStatus: '有效',
-    validStartDate: '2025/01/01',
-    validEndDate: '2027/01/01',
-  },
-])
-
-const openBindDialog = (row: UserRow) => {
+const bindTable = ref<CertOption[]>([])
+const selectedCertIds = ref<number[]>([])
+const openBindDialog = async (row: UserRow) => {
   currentRow.value = row
   bindVisible.value = true
+  selectedCertIds.value = []
+  await handleBindQuery()
 }
-
-const handleBindQuery = () => {}
-
+const handleBindQuery = async () => {
+  if (!currentRow.value) return
+  try {
+    const response = await getAdminCertificates(currentRow.value.id, { deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    const keyword = bindQuery.value.certDN.trim()
+    bindTable.value = (items ?? [])
+      .map((item: any) => ({ certId: Number(item.certId ?? 0), certNo: item.certNo ?? '-', certName: item.certName ?? '-', selected: !!item.selected }))
+      .filter((item: CertOption) => !keyword || item.certNo.includes(keyword) || item.certName.includes(keyword))
+    selectedCertIds.value = bindTable.value.filter((item) => item.selected).map((item) => item.certId)
+  } catch {
+    bindTable.value = []
+  }
+}
 const handleBindReset = () => {
   bindQuery.value.certDN = ''
+  handleBindQuery()
+}
+const handleBindSelectionChange = (rows: CertOption[]) => {
+  selectedCertIds.value = rows.map((item) => item.certId)
+}
+const handleBindSave = async () => {
+  if (!currentRow.value) return
+  try {
+    await bindAdminCert(currentRow.value.id, {
+      deptId: getDeptId(),
+      deptName: currentRow.value.deptName,
+      certIds: selectedCertIds.value,
+      ...getApplicantInfo(),
+    })
+    ElMessage.success('操作成功')
+    bindVisible.value = false
+  } catch {
+    ElMessage.error('操作失败')
+  }
 }
 
-const handleBindSave = () => {
-  ElMessage.success('操作成功')
-  bindVisible.value = false
-}
-
-const handleRefreshAuth = () => {
+const handleRefreshAuth = async () => {
+  if (!currentRow.value) return
+  await loadPermissions(currentRow.value.id)
   ElMessage.success('权限已刷新')
 }
-
 const closeDialog = () => {
   dialogVisible.value = false
 }
+const dialogTitle = computed(() => (dialogMode.value === 'add' ? '新增' : dialogMode.value === 'edit' ? '修改' : '详情'))
+
+onMounted(() => {
+  fetchList()
+})
 </script>
 
 <style scoped lang="scss">
@@ -632,8 +621,8 @@ const closeDialog = () => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -648,8 +637,8 @@ const closeDialog = () => {
 .query-form :deep(.el-input__wrapper),
 .query-form :deep(.el-select__wrapper) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-actions {
@@ -721,17 +710,17 @@ const closeDialog = () => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 .dialog-grid {
@@ -741,19 +730,19 @@ const closeDialog = () => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .tree-disabled {
@@ -763,7 +752,7 @@ const closeDialog = () => {
 
 .tree-disabled :deep(.el-tree-node__content),
 .tree-disabled :deep(.el-tree-node__label) {
-  color: #a8abb2;
+  color: var(--app-text-muted);
 }
 
 .tree-disabled :deep(.el-tree-node__content:hover) {
@@ -772,13 +761,13 @@ const closeDialog = () => {
 
 .tree-disabled :deep(.el-checkbox__input.is-checked .el-checkbox__inner),
 .tree-disabled :deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
-  background-color: #dcdfe6;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg);
+  border-color: var(--app-disabled-bg);
 }
 
 .tree-disabled :deep(.el-checkbox__input .el-checkbox__inner) {
-  background-color: #f5f7fa;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg-light);
+  border-color: var(--app-disabled-bg);
 }
 
 @media (max-width: 1200px) {
@@ -800,7 +789,7 @@ const closeDialog = () => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 
 :deep(.action-col .cell) {
@@ -811,4 +800,10 @@ const closeDialog = () => {
   gap: 8px;
 }
 
+:deep(.action-col--ops .cell) {
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
 </style>
+

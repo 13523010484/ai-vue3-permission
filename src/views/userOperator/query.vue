@@ -66,7 +66,7 @@
           class="dept-table"
           table-layout="auto"
         >
-          <el-table-column type="index" label="??" width="70" fixed="left" />
+          <el-table-column class-name="action-col" type="index" label="序号" width="70" fixed="left" />
 
           <el-table-column prop="deptName" label="部门名称" min-width="160">
             <template #default="{ row }">
@@ -76,7 +76,7 @@
               <span v-else>{{ row.deptName }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="username" label="用户名" min-width="120" />
+          <el-table-column class-name="action-col" prop="username" label="用户名" min-width="120" />
           <el-table-column prop="realName" label="用户姓名" min-width="120" />
           <el-table-column prop="officePhone" label="办公电话" min-width="140" />
           <el-table-column prop="mobile" label="手机" min-width="140" />
@@ -89,48 +89,45 @@
               <span v-else>{{ row.remark || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="createdBy" label="录入人" min-width="120" />
+          <el-table-column class-name="action-col" prop="createdBy" label="录入人" min-width="120" />
           <el-table-column prop="createdAt" label="录入时间" min-width="170" />
           <el-table-column prop="updatedBy" label="更新人" min-width="120" />
           <el-table-column prop="updatedAt" label="更新时间" min-width="170" />
           <el-table-column prop="reviewedBy" label="复核人" min-width="120" />
           <el-table-column prop="reviewedAt" label="复核时间" min-width="170" />
-          <el-table-column label="操作" fixed="right" class-name="action-col">
+          <el-table-column label="操作" fixed="right" width="1" class-name="action-col action-col--ops">
             <template #default="{ row }">
-              <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
-              <el-button link type="primary" @click="openEditDialog(row)" :disabled="!canEdit(row)"
+              <el-button link size="small" type="primary" @click="openDetailDialog(row)">详情</el-button>
+              <el-button link size="small" type="primary" @click="openEditDialog(row)" :disabled="!canEdit(row)"
                 >修改</el-button
               >
-              <el-button link type="warning" @click="handleFreeze(row)" :disabled="!canFreeze(row)"
+              <el-button link size="small" type="warning" @click="handleFreeze(row)" :disabled="!canFreeze(row)"
                 >冻结</el-button
               >
-              <el-button
-                link
+              <el-button link size="small"
                 type="success"
                 @click="handleUnfreeze(row)"
                 :disabled="!canUnfreeze(row)"
                 >解冻</el-button
               >
-              <el-button link type="danger" @click="handleLogout(row)" :disabled="!canLogout(row)"
+              <el-button link size="small" type="danger" @click="handleLogout(row)" :disabled="!canLogout(row)"
                 >注销</el-button
               >
-              <el-button
-                link
+              <el-button link size="small"
                 type="primary"
                 @click="openAssignDialog(row)"
                 :disabled="!canAssign(row)"
               >
                 分配权限
               </el-button>
-              <el-button
-                link
+              <el-button link size="small"
                 type="primary"
                 @click="handleResetPwd(row)"
                 :disabled="!canResetPwd(row)"
               >
                 重置密码
               </el-button>
-              <el-button link type="primary" @click="openBindDialog(row)" :disabled="!canBind(row)">
+              <el-button link size="small" type="primary" @click="openBindDialog(row)" :disabled="!canBind(row)">
                 绑定证书
               </el-button>
             </template>
@@ -247,16 +244,12 @@
           <el-button @click="handleBindReset">重置</el-button>
         </div>
       </el-form>
-      <el-table ref="tableRef" :data="bindTable" border stripe>
-        <el-table-column type="index" label="??" width="70" fixed="left" />
+      <el-table ref="tableRef" :data="bindTable" border stripe @selection-change="handleBindSelectionChange">
+        <el-table-column type="index" label="序号" width="70" fixed="left" />
 
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="dn" label="证书DN" min-width="260" />
-        <el-table-column prop="owner" label="持证机构" min-width="180" />
-        <el-table-column prop="algo" label="证书算法" min-width="100" />
-        <el-table-column prop="status" label="证书状态" min-width="100" />
-        <el-table-column prop="validFrom" label="有效期开始" min-width="120" />
-        <el-table-column prop="validTo" label="有效期结束" min-width="120" />
+        <el-table-column prop="certNo" label="证书编号" min-width="240" />
+        <el-table-column prop="certName" label="证书名称" min-width="180" />
       </el-table>
       <template #footer>
         <el-button @click="bindVisible = false">取消</el-button>
@@ -267,8 +260,24 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import {
+  assignOperatorPermissions,
+  bindOperatorCert,
+  cancelOperator,
+  createOperator,
+  exportOperators,
+  freezeOperator,
+  getOperatorCertificates,
+  getOperatorDetail,
+  getOperatorList,
+  getOperatorPermissions,
+  modifyOperator,
+  resetOperatorPassword,
+  unfreezeOperator,
+} from '@/api/userOperator'
+import { getPositionList } from '@/api/post'
 
 type StatusValue = '1' | '2' | '3' | '4' | ''
 
@@ -291,6 +300,13 @@ type UserRow = {
   isSelf?: boolean
 }
 
+type CertOption = {
+  certId: number
+  certNo: string
+  certName: string
+  selected?: boolean
+}
+
 const statusOptions = [
   { value: '1', label: '正常' },
   { value: '2', label: '冻结' },
@@ -298,140 +314,160 @@ const statusOptions = [
   { value: '4', label: '密码重置' },
 ]
 
-const deptOptions = ['清算管理部']
-
 const queryForm = ref({
   username: '',
   realName: '',
   status: '' as StatusValue,
 })
 
-const today = new Date()
-const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-const todayStr = `${today.getFullYear()}/${pad(today.getMonth() + 1)}/${pad(today.getDate())}`
-const now = '2026/02/09 13:30:00'
+const list = ref<UserRow[]>([])
+const loading = ref(false)
 
-const list = ref<UserRow[]>([
-  {
-    id: `U${todayStr.replaceAll('/', '')}01`,
-    deptName: '清算管理部',
-    username: 'deptopToday',
-    realName: '今日新增',
-    officePhone: '021-55550010',
-    mobile: '13800001000',
-    status: '4',
-    statusLabel: '密码重置',
-    remark: '今日新增操作员',
-    createdBy: 'superadmin',
-    createdAt: `${todayStr} 09:30:00`,
-    updatedBy: 'superadmin',
-    updatedAt: `${todayStr} 09:30:00`,
-    reviewedBy: 'auditor01',
-    reviewedAt: `${todayStr} 10:00:00`,
-  },
-  {
-    id: 'U2001',
-    deptName: '清算管理部',
-    username: 'deptop01',
-    realName: '王宁',
-    officePhone: '021-55550001',
-    mobile: '13800000001',
-    status: '1',
-    statusLabel: '正常',
-    remark: '操作员',
-    createdBy: 'superadmin',
-    createdAt: now,
-    updatedBy: 'superadmin',
-    updatedAt: now,
-    reviewedBy: 'auditor01',
-    reviewedAt: now,
-  },
-  {
-    id: 'U2002',
-    deptName: '清算管理部',
-    username: 'deptop02',
-    realName: '李娜',
-    officePhone: '021-55550002',
-    mobile: '13800000002',
-    status: '2',
-    statusLabel: '冻结',
-    remark: '临时冻结',
-    createdBy: 'superadmin',
-    createdAt: now,
-    updatedBy: 'superadmin',
-    updatedAt: now,
-    reviewedBy: 'auditor01',
-    reviewedAt: now,
-  },
-  {
-    id: 'U2003',
-    deptName: '清算管理部',
-    username: 'deptop03',
-    realName: '赵敏',
-    officePhone: '021-55550003',
-    mobile: '13800000003',
-    status: '4',
-    statusLabel: '密码重置',
-    remark: '密码重置',
-    createdBy: 'superadmin',
-    createdAt: now,
-    updatedBy: 'superadmin',
-    updatedAt: now,
-    reviewedBy: 'auditor01',
-    reviewedAt: now,
-  },
-])
+const statusCodeMap: Record<string, StatusValue> = {
+  NORMAL: '1',
+  FROZEN: '2',
+  CANCELED: '3',
+  PASSWORD_RESET: '4',
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+}
 
-const fillUserOperatorList = () => {
-  const statuses: StatusValue[] = ['1', '2', '3', '4']
-  const statusLabelMap: Record<string, string> = {
-    '1': '正常',
-    '2': '冻结',
-    '3': '注销',
-    '4': '密码重置',
-  }
-  while (list.value.length < 10) {
-    const idx = list.value.length + 1
-    const status = statuses[idx % statuses.length]
-    list.value.push({
-      id: `U${todayStr.replaceAll('/', '')}${String(idx).padStart(2, '0')}`,
-      deptName: '清算管理部',
-      username: `deptop${String(idx).padStart(2, '0')}`,
-      realName: `操作员${idx}`,
-      officePhone: '021-55550010',
-      mobile: `13800001${String(idx).padStart(3, '0')}`,
-      status,
-      statusLabel: statusLabelMap[status],
-      remark: '今日新增操作员',
-      createdBy: 'superadmin',
-      createdAt: `${todayStr} 11:${String(idx).padStart(2, '0')}:00`,
-      updatedBy: 'superadmin',
-      updatedAt: `${todayStr} 11:${String(idx).padStart(2, '0')}:00`,
-      reviewedBy: 'auditor01',
-      reviewedAt: `${todayStr} 12:${String(idx).padStart(2, '0')}:00`,
-    })
+const statusLabelMap: Record<string, string> = {
+  NORMAL: '正常',
+  FROZEN: '冻结',
+  CANCELED: '注销',
+  PASSWORD_RESET: '密码重置',
+  '1': '正常',
+  '2': '冻结',
+  '3': '注销',
+  '4': '密码重置',
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '-'
+  return value.replace('T', ' ').replaceAll('-', '/')
+}
+
+const getDeptId = () => {
+  const raw = localStorage.getItem('deptId')
+  const val = raw ? Number(raw) : NaN
+  return Number.isFinite(val) && val > 0 ? val : undefined
+}
+
+const getDeptName = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.deptName ?? localStorage.getItem('deptName') ?? '默认部门')
+  } catch {
+    return String(localStorage.getItem('deptName') ?? '默认部门')
   }
 }
 
-fillUserOperatorList()
+const getApplicantInfo = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return {
+      applicantId: Number(user?.id ?? 1),
+      applicantName: String(user?.name ?? user?.username ?? 'admin'),
+      applicantDeptId: Number(user?.deptId ?? getDeptId() ?? 1),
+      applicantDeptName: String(user?.deptName ?? editForm.value.deptName ?? getDeptName()),
+    }
+  } catch {
+    return {
+      applicantId: 1,
+      applicantName: 'admin',
+      applicantDeptId: Number(getDeptId() ?? 1),
+      applicantDeptName: String(editForm.value.deptName || getDeptName()),
+    }
+  }
+}
 
-const filteredList = computed(() => {
-  return list.value.filter((item) => {
-    if (queryForm.value.username && !item.username.includes(queryForm.value.username)) return false
-    if (queryForm.value.realName && !item.realName.includes(queryForm.value.realName)) return false
-    if (queryForm.value.status && item.status !== queryForm.value.status) return false
-    return true
-  })
-})
+const buildQueryParams = () => {
+  const statusMap: Record<string, string> = {
+    '1': 'NORMAL',
+    '2': 'FROZEN',
+    '3': 'CANCELED',
+    '4': 'PASSWORD_RESET',
+  }
+  return {
+    deptId: getDeptId(),
+    username: queryForm.value.username || undefined,
+    fullName: queryForm.value.realName || undefined,
+    status: queryForm.value.status ? statusMap[queryForm.value.status] : undefined,
+  }
+}
 
-const handleQuery = () => {}
+const normalizeOperator = (item: any): UserRow => {
+  const rawStatus = item.status ?? ''
+  const status = statusCodeMap[rawStatus] ?? '1'
+  return {
+    id: String(item.id ?? ''),
+    deptName: item.deptName ?? '-',
+    username: item.username ?? '-',
+    realName: item.fullName ?? item.realName ?? '-',
+    officePhone: item.officePhone ?? '-',
+    mobile: item.mobilePhone ?? item.mobile ?? '-',
+    status,
+    statusLabel: statusLabelMap[rawStatus] ?? statusLabelMap[status] ?? '-',
+    remark: item.remark ?? '-',
+    createdBy: item.createdOperName ?? '-',
+    createdAt: formatDateTime(item.createdAt),
+    updatedBy: item.updatedOperName ?? '-',
+    updatedAt: formatDateTime(item.updatedAt),
+    reviewedBy: item.reviewOperName ?? '-',
+    reviewedAt: formatDateTime(item.reviewTime),
+    isSelf: false,
+  }
+}
+
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const response = await getOperatorList(buildQueryParams())
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    list.value = (items ?? []).map(normalizeOperator)
+  } catch {
+    list.value = []
+    ElMessage.error('获取操作员列表失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const filteredList = computed(() => list.value)
+
+const handleQuery = () => {
+  fetchList()
+}
 
 const handleReset = () => {
   queryForm.value = { username: '', realName: '', status: '' }
+  fetchList()
 }
 
-const handleDownload = () => {
-  ElMessage.success('下载成功')
+const downloadBlob = (data: Blob, filename: string) => {
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const handleDownload = async () => {
+  try {
+    const response = await exportOperators(buildQueryParams())
+    const payload = response?.data ?? response
+    const blob = payload instanceof Blob ? payload : new Blob([payload])
+    downloadBlob(blob, `操作员查询_${new Date().getTime()}.xlsx`)
+  } catch {
+    ElMessage.error('下载失败')
+  }
 }
 
 const truncateText = (text: string, size: number) => {
@@ -451,9 +487,20 @@ const dialogVisible = ref(false)
 const dialogMode = ref<'add' | 'edit' | 'detail' | 'assign'>('add')
 const currentRow = ref<UserRow | null>(null)
 
+type EditForm = {
+  deptName: string
+  username: string
+  realName: string
+  officePhone: string
+  mobile: string
+  userType: string
+  status: StatusValue
+  remark: string
+}
+
 const editFormRef = ref()
-const editForm = ref({
-  deptName: deptOptions[0],
+const editForm = ref<EditForm>({
+  deptName: getDeptName(),
   username: '',
   realName: '',
   officePhone: '',
@@ -464,41 +511,97 @@ const editForm = ref({
 })
 
 const editRules = {
-  deptName: [{ required: true, message: '请选择部门名称', trigger: 'change' }],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   realName: [{ required: true, message: '请输入用户姓名', trigger: 'blur' }],
 }
 
-const postOptions = [
-  { id: 'P001', name: '清算操作岗' },
-  { id: 'P002', name: '风控操作岗' },
-  { id: 'P003', name: '监控操作岗' },
-]
-
+const postOptions = ref<{ id: string; name: string }[]>([])
 const selectedPosts = ref<string[]>([])
 
 const operateTreeRef = ref()
-const operateTree = ref([
-  {
-    id: 'O1',
-    label: '系统管理',
-    children: [
-      { id: 'O1-1', label: '部门维护' },
-      { id: 'O1-2', label: '用户维护' },
-    ],
-  },
-])
+const operateTree = ref<any[]>([])
+const operateChecked = ref<string[]>([])
 
-const operateChecked = ref<string[]>(['O1-1'])
+const isBaseReadonly = computed(() => dialogMode.value === 'detail' || dialogMode.value === 'assign')
+const deptOptions = computed(() => {
+  const dept = editForm.value.deptName || currentRow.value?.deptName || ''
+  return dept ? [dept] : []
+})
 
-const isBaseReadonly = computed(
-  () => dialogMode.value === 'detail' || dialogMode.value === 'assign',
-)
+const loadPosts = async () => {
+  try {
+    const response = await getPositionList({ deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    postOptions.value = (items ?? []).map((item: any) => ({ id: String(item.id), name: item.name ?? '-' }))
+  } catch {
+    postOptions.value = []
+  }
+}
+
+const loadPermissions = async (id: string) => {
+  try {
+    const response = await getOperatorPermissions(id, { deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const permissions = Array.isArray(payload) ? payload : payload?.operScopes ?? payload?.permissions ?? []
+    const grouped = new Map<string, { id: string; label: string; children: any[] }>()
+    const checked: string[] = []
+    permissions.forEach((item: any) => {
+      const systemCode = String(item.systemCode ?? 'SYS')
+      const systemName = String(item.systemName ?? systemCode)
+      if (!grouped.has(systemCode)) grouped.set(systemCode, { id: systemCode, label: systemName, children: [] })
+      const scopeCode = String(item.scopeCode ?? '')
+      if (!scopeCode) return
+      grouped.get(systemCode)?.children.push({ id: scopeCode, label: item.scopeName ?? scopeCode })
+      if (item.selected !== false) checked.push(scopeCode)
+    })
+    operateTree.value = Array.from(grouped.values())
+    operateChecked.value = checked
+    nextTick(() => operateTreeRef.value?.setCheckedKeys?.(checked))
+  } catch {
+    operateTree.value = []
+    operateChecked.value = []
+  }
+}
+
+const fillEditByRow = async (row: UserRow) => {
+  try {
+    const response = await getOperatorDetail(row.id, { deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const data = payload?.data ?? payload
+    editForm.value = {
+      deptName: data?.deptName ?? row.deptName,
+      username: data?.username ?? row.username,
+      realName: data?.fullName ?? row.realName,
+      officePhone: data?.officePhone ?? row.officePhone,
+      mobile: data?.mobilePhone ?? row.mobile,
+      userType: String(data?.userType ?? '3'),
+      status: statusCodeMap[data?.status] ?? row.status,
+      remark: data?.remark ?? row.remark,
+    }
+    selectedPosts.value = (data?.positions ?? [])
+      .filter((item: any) => item.selected)
+      .map((item: any) => String(item.positionId))
+  } catch {
+    editForm.value = {
+      deptName: row.deptName,
+      username: row.username,
+      realName: row.realName,
+      officePhone: row.officePhone,
+      mobile: row.mobile,
+      userType: '3',
+      status: row.status,
+      remark: row.remark,
+    }
+    selectedPosts.value = []
+  }
+}
 
 const openAddDialog = () => {
   dialogMode.value = 'add'
+  currentRow.value = null
   editForm.value = {
-    deptName: deptOptions[0],
+    deptName: getDeptName(),
     username: '',
     realName: '',
     officePhone: '',
@@ -508,200 +611,209 @@ const openAddDialog = () => {
     remark: '',
   }
   selectedPosts.value = []
+  operateTree.value = []
   operateChecked.value = []
   dialogVisible.value = true
-  nextTick(() => {
-    operateTreeRef.value?.setCheckedKeys?.([])
-  })
 }
 
-const openEditDialog = (row: UserRow) => {
+const openEditDialog = async (row: UserRow) => {
   dialogMode.value = 'edit'
   currentRow.value = row
-  editForm.value = {
-    deptName: row.deptName,
-    username: row.username,
-    realName: row.realName,
-    officePhone: row.officePhone,
-    mobile: row.mobile,
-    userType: '3',
-    status: row.status,
-    remark: row.remark,
-  }
-  selectedPosts.value = ['P001']
-  operateChecked.value = ['O1-1']
+  await fillEditByRow(row)
+  await loadPermissions(row.id)
   dialogVisible.value = true
-  nextTick(() => {
-    operateTreeRef.value?.setCheckedKeys?.(operateChecked.value)
-  })
 }
 
-const openDetailDialog = (row: UserRow) => {
+const openDetailDialog = async (row: UserRow) => {
   dialogMode.value = 'detail'
   currentRow.value = row
-  editForm.value = {
-    deptName: row.deptName,
-    username: row.username,
-    realName: row.realName,
-    officePhone: row.officePhone,
-    mobile: row.mobile,
-    userType: '3',
-    status: row.status,
-    remark: row.remark,
-  }
-  selectedPosts.value = ['P001']
-  operateChecked.value = ['O1-1']
+  await fillEditByRow(row)
+  await loadPermissions(row.id)
   dialogVisible.value = true
-  nextTick(() => {
-    operateTreeRef.value?.setCheckedKeys?.(operateChecked.value)
-  })
 }
 
-const openAssignDialog = (row: UserRow) => {
+const openAssignDialog = async (row: UserRow) => {
   dialogMode.value = 'assign'
   currentRow.value = row
-  editForm.value = {
-    deptName: row.deptName,
-    username: row.username,
-    realName: row.realName,
-    officePhone: row.officePhone,
-    mobile: row.mobile,
-    userType: '3',
-    status: row.status,
-    remark: row.remark,
-  }
-  selectedPosts.value = ['P001']
-  operateChecked.value = ['O1-1']
+  await fillEditByRow(row)
+  await loadPermissions(row.id)
   dialogVisible.value = true
-  nextTick(() => {
-    operateTreeRef.value?.setCheckedKeys?.(operateChecked.value)
-  })
 }
 
 const handleSaveEdit = async () => {
   if (!editFormRef.value || dialogMode.value === 'detail') return
   try {
     await editFormRef.value.validate()
-    const operateKeys = operateTreeRef.value?.getCheckedKeys?.() || []
-    if (selectedPosts.value.length === 0) {
-      ElMessage.error('请指定岗位')
+    const deptId = getDeptId()
+    if (!deptId) {
+      ElMessage.error('缺少部门信息')
       return
     }
-    if (operateKeys.length === 0) {
-      ElMessage.error('请指定岗位的可操作范围')
-      return
-    }
-
-    const exists = list.value.some((item) => item.username === editForm.value.username)
-    if (dialogMode.value === 'add' && exists) {
-      ElMessage.error('用户名已经存在，请查证后重新录入')
-      return
-    }
-
-    if (dialogMode.value === 'add') {
-      list.value.unshift({
-        id: `U${Math.floor(Math.random() * 9000 + 1000)}`,
+    const applicant = getApplicantInfo()
+    if (dialogMode.value === 'assign') {
+      if (!currentRow.value) return
+      if (selectedPosts.value.length === 0) {
+        ElMessage.error('请指定岗位')
+        return
+      }
+      await assignOperatorPermissions(currentRow.value.id, {
+        deptId,
+        deptName: editForm.value.deptName,
+        positionIds: selectedPosts.value.map((id) => Number(id)),
+        ...applicant,
+      })
+    } else if (dialogMode.value === 'add') {
+      await createOperator({
+        deptId,
         deptName: editForm.value.deptName,
         username: editForm.value.username,
-        realName: editForm.value.realName,
+        fullName: editForm.value.realName,
         officePhone: editForm.value.officePhone,
-        mobile: editForm.value.mobile,
-        status: '4',
-        statusLabel: '密码重置',
+        mobilePhone: editForm.value.mobile,
         remark: editForm.value.remark,
-        createdBy: 'superadmin',
-        createdAt: now,
-        updatedBy: 'superadmin',
-        updatedAt: now,
-        reviewedBy: '',
-        reviewedAt: '',
+        ...applicant,
       })
-    } else if (currentRow.value) {
-      currentRow.value.realName = editForm.value.realName
-      currentRow.value.officePhone = editForm.value.officePhone
-      currentRow.value.mobile = editForm.value.mobile
-      currentRow.value.remark = editForm.value.remark
-      currentRow.value.updatedBy = 'superadmin'
-      currentRow.value.updatedAt = now
+    } else {
+      if (!currentRow.value) return
+      await modifyOperator(currentRow.value.id, {
+        deptId,
+        deptName: editForm.value.deptName,
+        fullName: editForm.value.realName,
+        officePhone: editForm.value.officePhone,
+        mobilePhone: editForm.value.mobile,
+        remark: editForm.value.remark,
+        ...applicant,
+      })
     }
-
     ElMessage.success('操作成功')
     dialogVisible.value = false
+    fetchList()
   } catch {
-    ElMessage.error('请检查必填项')
+    ElMessage.error('操作失败')
+  }
+}
+
+const submitAction = async (
+  row: UserRow,
+  action: (id: string, data: any) => Promise<any>,
+  nextStatus: StatusValue,
+  nextLabel: string,
+) => {
+  const deptId = getDeptId()
+  if (!deptId) {
+    ElMessage.error('缺少部门信息')
+    return
+  }
+  try {
+    await action(row.id, {
+      deptId,
+      deptName: row.deptName,
+      ...getApplicantInfo(),
+    })
+    row.status = nextStatus
+    row.statusLabel = nextLabel
+    ElMessage.success('操作成功')
+    fetchList()
+  } catch {
+    ElMessage.error('操作失败')
   }
 }
 
 const handleFreeze = (row: UserRow) => {
-  if (!canFreeze(row)) {
-    ElMessage.error('用户不能变更自己的状态')
-    return
-  }
-  row.status = '2'
-  row.statusLabel = '冻结'
-  ElMessage.success('操作成功')
+  if (!canFreeze(row)) return
+  submitAction(row, freezeOperator as any, '2', '冻结')
 }
 
 const handleUnfreeze = (row: UserRow) => {
-  if (!canUnfreeze(row)) {
-    ElMessage.error('该用户状态已是非冻结状态不能进行解冻操作')
-    return
-  }
-  row.status = '1'
-  row.statusLabel = '正常'
-  ElMessage.success('操作成功')
+  if (!canUnfreeze(row)) return
+  submitAction(row, unfreezeOperator as any, '1', '正常')
 }
 
 const handleResetPwd = (row: UserRow) => {
-  if (!canResetPwd(row)) {
-    ElMessage.error('该用户状态已是非正常状态不能进行重置密码操作')
-    return
-  }
-  row.status = '4'
-  row.statusLabel = '密码重置'
-  ElMessage.success('操作成功')
+  if (!canResetPwd(row)) return
+  submitAction(row, resetOperatorPassword as any, '4', '密码重置')
 }
 
 const handleLogout = (row: UserRow) => {
-  if (!canLogout(row)) {
-    ElMessage.error('用户状态不允许注销')
-    return
-  }
-  row.status = '3'
-  row.statusLabel = '注销'
-  ElMessage.success('操作成功')
+  if (!canLogout(row)) return
+  submitAction(row, cancelOperator as any, '3', '注销')
 }
 
 const bindVisible = ref(false)
 const bindQuery = ref({ dn: '' })
-const bindTable = ref([
-  {
-    dn: 'CN=cert-001,OU=SHCH,O=SHCH',
-    owner: '000001/清算管理部',
-    algo: 'SM2',
-    status: '有效',
-    validFrom: '2025/01/01',
-    validTo: '2027/01/01',
-  },
-])
+const bindTable = ref<CertOption[]>([])
+const selectedCertIds = ref<number[]>([])
 
-const openBindDialog = (row: UserRow) => {
+const openBindDialog = async (row: UserRow) => {
   currentRow.value = row
   bindVisible.value = true
+  selectedCertIds.value = []
+  try {
+    const response = await getOperatorCertificates(row.id, { deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    bindTable.value = (items ?? []).map((item: any) => ({
+      certId: Number(item.certId ?? 0),
+      certNo: item.certNo ?? '-',
+      certName: item.certName ?? '-',
+      selected: !!item.selected,
+    }))
+    selectedCertIds.value = bindTable.value.filter((item) => item.selected).map((item) => item.certId)
+  } catch {
+    bindTable.value = []
+  }
 }
 
-const handleBindQuery = () => {}
+const handleBindQuery = async () => {
+  if (!currentRow.value) return
+  try {
+    const response = await getOperatorCertificates(currentRow.value.id, { deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    const keyword = bindQuery.value.dn.trim()
+    bindTable.value = (items ?? [])
+      .map((item: any) => ({
+        certId: Number(item.certId ?? 0),
+        certNo: item.certNo ?? '-',
+        certName: item.certName ?? '-',
+        selected: !!item.selected,
+      }))
+      .filter((item: CertOption) => !keyword || item.certNo.includes(keyword) || item.certName.includes(keyword))
+  } catch {
+    bindTable.value = []
+  }
+}
 
 const handleBindReset = () => {
   bindQuery.value.dn = ''
+  handleBindQuery()
 }
 
-const handleBindSave = () => {
-  ElMessage.success('操作成功')
-  bindVisible.value = false
+const handleBindSave = async () => {
+  if (!currentRow.value) return
+  const deptId = getDeptId()
+  if (!deptId) return
+  try {
+    await bindOperatorCert(currentRow.value.id, {
+      deptId,
+      deptName: currentRow.value.deptName,
+      certIds: selectedCertIds.value,
+      ...getApplicantInfo(),
+    })
+    ElMessage.success('操作成功')
+    bindVisible.value = false
+  } catch {
+    ElMessage.error('操作失败')
+  }
 }
 
-const handleRefreshAuth = () => {
+const handleBindSelectionChange = (rows: CertOption[]) => {
+  selectedCertIds.value = rows.map((item) => item.certId)
+}
+
+const handleRefreshAuth = async () => {
+  if (!currentRow.value) return
+  await loadPermissions(currentRow.value.id)
   ElMessage.success('权限已刷新')
 }
 
@@ -714,6 +826,11 @@ const dialogTitle = computed(() => {
   if (dialogMode.value === 'edit') return '修改'
   if (dialogMode.value === 'assign') return '分配权限'
   return '详情'
+})
+
+onMounted(() => {
+  loadPosts()
+  fetchList()
 })
 </script>
 
@@ -730,8 +847,8 @@ const dialogTitle = computed(() => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -746,8 +863,8 @@ const dialogTitle = computed(() => {
 .query-form :deep(.el-input__wrapper),
 .query-form :deep(.el-select__wrapper) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-actions {
@@ -819,17 +936,17 @@ const dialogTitle = computed(() => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 :deep(.action-col .cell) {
@@ -843,19 +960,19 @@ const dialogTitle = computed(() => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .tree-disabled {
@@ -866,7 +983,7 @@ const dialogTitle = computed(() => {
 .tree-disabled :deep(.el-tree-node__content),
 .tree-disabled :deep(.el-tree-node__label),
 .tree-disabled :deep(.el-checkbox__label) {
-  color: #a8abb2;
+  color: var(--app-text-muted);
 }
 
 .tree-disabled :deep(.el-tree-node__content:hover) {
@@ -875,13 +992,13 @@ const dialogTitle = computed(() => {
 
 .tree-disabled :deep(.el-checkbox__input.is-checked .el-checkbox__inner),
 .tree-disabled :deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
-  background-color: #dcdfe6;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg);
+  border-color: var(--app-disabled-bg);
 }
 
 .tree-disabled :deep(.el-checkbox__input .el-checkbox__inner) {
-  background-color: #f5f7fa;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg-light);
+  border-color: var(--app-disabled-bg);
 }
 
 @media (max-width: 1200px) {
@@ -902,6 +1019,6 @@ const dialogTitle = computed(() => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 </style>

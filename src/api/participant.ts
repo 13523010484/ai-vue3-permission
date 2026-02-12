@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import { AxiosPromise } from 'axios'
+import type { AxiosPromise } from 'axios'
 
 // 参与者管理相关API
 

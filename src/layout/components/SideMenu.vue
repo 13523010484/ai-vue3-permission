@@ -11,7 +11,7 @@
       unique-opened
       background-color="transparent"
       text-color="#5f5b53"
-      active-text-color="#2f77ff"
+      active-text-color="var(--el-color-primary)"
       :collapse-transition="false"
       popper-class="side-menu-popper"
       @open="handleMenuOpen"
@@ -81,7 +81,7 @@ const handleMenuClose = (index: string) => {
 
   &:hover {
     color: #5f5a53;
-    background: #f5ede4;
+    background: var(--el-color-primary-light-9);
   }
 
   :deep(.el-icon) {
@@ -135,10 +135,10 @@ const handleMenuClose = (index: string) => {
 }
 
 .side-menu :deep(.el-menu-item.is-active) {
-  background: #e9f1ff;
-  color: #2f77ff;
-  border: 1px solid #cfe0ff !important;
-  box-shadow: inset 0 0 0 1px rgba(47, 119, 255, 0.15);
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+  border: 1px solid var(--el-color-primary-light-5) !important;
+  box-shadow: inset 0 0 0 1px rgba(201, 163, 92, 0.2);
 }
 
 .side-menu :deep(.el-menu-item:hover) {
@@ -238,7 +238,7 @@ const handleMenuClose = (index: string) => {
   padding: 6px 0 !important;
   border: 1px solid #d6e4ff !important;
   border-radius: 10px !important;
-  background: #ffffff !important;
+  background: var(--app-surface) !important;
   box-shadow: 0 6px 16px rgba(64, 120, 255, 0.2) !important;
   visibility: visible !important;
   opacity: 1 !important;
@@ -264,14 +264,14 @@ const handleMenuClose = (index: string) => {
 .side-menu:not(.is-collapsed) :deep(.el-sub-menu__inline .el-sub-menu__title:hover),
 .side-menu:not(.is-collapsed) :deep(.el-menu--inline .el-menu-item:hover),
 .side-menu:not(.is-collapsed) :deep(.el-menu--inline .el-sub-menu__title:hover) {
-  background: #e9f2ff !important;
-  color: #2f77ff !important;
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
 }
 
 .side-menu:not(.is-collapsed) :deep(.el-sub-menu__inline .el-menu-item.is-active),
 .side-menu:not(.is-collapsed) :deep(.el-menu--inline .el-menu-item.is-active) {
-  background: #e9f2ff !important;
-  color: #2f77ff !important;
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
 }
 
 /* 子菜单弹出样式 - 横向从右侧打开 */
@@ -280,7 +280,7 @@ const handleMenuClose = (index: string) => {
   left: 100% !important;
   right: auto !important;
   top: 0 !important;
-  background: #ffffff !important;
+  background: var(--app-surface) !important;
   border: 1px solid #ebe6dd !important;
   border-radius: 8px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
@@ -313,12 +313,12 @@ const handleMenuClose = (index: string) => {
 
 .side-menu :deep(.el-sub-menu__popup .el-menu-item:hover),
 .side-menu :deep(.el-sub-menu__popup .el-sub-menu__title:hover) {
-  background: #f5ede4 !important;
+  background: var(--el-color-primary-light-9) !important;
 }
 
 .side-menu :deep(.el-sub-menu__popup .el-menu-item.is-active) {
-  background: #e9f1ff !important;
-  color: #2f77ff !important;
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
 }
 
 /* 处理 Popper 容器 - 确保菜单从右侧显示 */
@@ -327,7 +327,7 @@ const handleMenuClose = (index: string) => {
 }
 
 :global(.side-menu-popper) {
-  background: #ffffff !important;
+  background: var(--app-surface) !important;
   border: 1px solid #ebe6dd !important;
   border-radius: 8px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
@@ -349,11 +349,11 @@ const handleMenuClose = (index: string) => {
 }
 
 :global(.side-menu-popper .el-menu-item:hover) {
-  background: #f5ede4 !important;
+  background: var(--el-color-primary-light-9) !important;
 }
 
 :global(.side-menu-popper .el-menu-item.is-active) {
-  background: #e9f1ff !important;
-  color: #2f77ff !important;
+  background: var(--el-color-primary-light-9) !important;
+  color: var(--el-color-primary) !important;
 }
 </style>

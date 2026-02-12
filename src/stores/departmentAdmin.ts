@@ -17,10 +17,10 @@ type DepartmentAdmin = {
   mobile: string
   status: StatusValue
   remark: string
-  inputOperName: string
-  inputTime: string
-  updateOperName: string
-  updateTime: string
+  createdOperName: string
+  createdAt: string
+  updatedOperName: string
+  updatedAt: string
   reviewOperName: string
   reviewTime: string
   isSelf?: boolean
@@ -57,10 +57,10 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
         mobile: '13800000001',
         status: '1',
         remark: '负责清算管理部日常维护',
-        inputOperName: 'superadmin',
-        inputTime: now,
-        updateOperName: 'superadmin',
-        updateTime: now,
+        createdOperName: 'superadmin',
+        createdAt: now,
+        updatedOperName: 'superadmin',
+        updatedAt: now,
         reviewOperName: 'auditor01',
         reviewTime: now,
         isSelf: false,
@@ -74,10 +74,10 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
         mobile: '13800000002',
         status: '2',
         remark: '临时冻结，待复核',
-        inputOperName: 'superadmin',
-        inputTime: now,
-        updateOperName: 'superadmin',
-        updateTime: now,
+        createdOperName: 'superadmin',
+        createdAt: now,
+        updatedOperName: 'superadmin',
+        updatedAt: now,
         reviewOperName: 'auditor01',
         reviewTime: now,
         isSelf: false,
@@ -91,10 +91,10 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
         mobile: '13800000003',
         status: '4',
         remark: '',
-        inputOperName: 'superadmin',
-        inputTime: now,
-        updateOperName: 'superadmin',
-        updateTime: now,
+        createdOperName: 'superadmin',
+        createdAt: now,
+        updatedOperName: 'superadmin',
+        updatedAt: now,
         reviewOperName: 'auditor01',
         reviewTime: now,
         isSelf: true,
@@ -104,7 +104,7 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
       {
         id: 'C1001',
         certDN: 'CN=Cert-001,OU=Dept,O=Org',
-        certOrg: '000100+上清结算',
+        certOrg: '000100+上海清算所',
         certAlgorithm: 'RSA',
         status: '有效',
         validFrom: '2024/01/01',
@@ -194,10 +194,10 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
       const newUser: DepartmentAdmin = {
         ...payload,
         id: `U${Math.floor(Math.random() * 9000 + 1000)}`,
-        inputOperName: 'superadmin',
-        inputTime: now,
-        updateOperName: 'superadmin',
-        updateTime: now,
+        createdOperName: 'superadmin',
+        createdAt: now,
+        updatedOperName: 'superadmin',
+        updatedAt: now,
         reviewOperName: '',
         reviewTime: '',
         status: '4',
@@ -210,6 +210,7 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
       const index = this.list.findIndex((item) => item.id === payload.id)
       if (index === -1) return { ok: false, message: '未找到用户' }
       const original = this.list[index]
+      if (!original) return { ok: false, message: '操作失败' }
       const changed =
         original.operName !== payload.operName ||
         original.telPhone !== payload.telPhone ||
@@ -222,8 +223,8 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
         telPhone: payload.telPhone,
         mobile: payload.mobile,
         remark: payload.remark,
-        updateOperName: 'superadmin',
-        updateTime: now,
+        updatedOperName: 'superadmin',
+        updatedAt: now,
       }
       return { ok: true }
     },
@@ -231,8 +232,8 @@ export const useDepartmentAdminStore = defineStore('departmentAdmin', {
       const item = this.list.find((row) => row.id === id)
       if (!item) return
       item.status = status
-      item.updateOperName = 'superadmin'
-      item.updateTime = now
+      item.updatedOperName = 'superadmin'
+      item.updatedAt = now
     },
     filteredCertificates(keyword: string) {
       if (!keyword) return this.certificates

@@ -8,7 +8,7 @@
               <el-date-picker
                 v-model="queryForm.startDate"
                 type="date"
-                value-format="YYYY/MM/DD"
+                value-format="yyyy/MM/dd"
                 placeholder="选择开始日期"
                 clearable
               />
@@ -19,7 +19,7 @@
               <el-date-picker
                 v-model="queryForm.endDate"
                 type="date"
-                value-format="YYYY/MM/DD"
+                value-format="yyyy/MM/dd"
                 placeholder="选择结束日期"
                 clearable
               />
@@ -99,8 +99,8 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table">
-          <el-table-column type="index" label="序号" width="70" fixed="left" />
+        <el-table ref="tableRef" :data="pagedList" border stripe class="dept-table" table-layout="auto">
+          <el-table-column class-name="action-col" type="index" label="序号" width="70" fixed="left" />
 
 
 
@@ -121,10 +121,10 @@
 <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
 <el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
 <el-table-column prop="arrStatus" label="申请状态" min-width="120" />
-<el-table-column label="操作" min-width="200" fixed="right">
+          <el-table-column label="操作" width="1" fixed="right" class-name="action-col action-col--ops">
 <template #default="{ row }">
-              <el-button link type="primary" @click="openReviewDialog(row)">复核</el-button>
-              <el-button link type="danger" @click="handleRevoke(row)">撤销</el-button>
+              <el-button link size="small" type="primary" @click="openReviewDialog(row)">复核</el-button>
+              <el-button link size="small" type="danger" @click="handleRevoke(row)">撤销</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -211,9 +211,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
+import {
+  exportOperatorApplications,
+  getOperatorApplications,
+  reviewOperatorApplication,
+  revokeOperatorApplication,
+} from '@/api/userOperator'
+import { getPositionList } from '@/api/post'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -230,6 +237,7 @@ const queryForm = ref({
   deptName: '',
   operCode: '',
   operName: '',
+
   userType: 'all' as UserTypeValue,
   opType: 'all' as OpTypeValue,
   status: 'all' as StatusValue,
@@ -273,146 +281,191 @@ const userStatusOptions = [
 
 const currentUser = 'superadmin'
 const deptOptions = ['清算管理部']
+const list = ref<any[]>([])
+const loading = ref(false)
 
-const list = ref([
-  {
-    arrNo: `OP${todayStr.replaceAll('/', '')}0101`,
-    arrDate: todayStr,
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    operCode: 'deptopToday',
-    operName: '今日新增',
-    telPhone: '021-55550010',
-    mobile: '13800001000',
-    userType: '3',
-    userType: '部门操作员',
-    userStatus: '4',
-    operStatus: '密码重置',
-    remark: '今日新增操作员',
-    arrOperName: 'superadmin',
-    applyTime: `${todayStr} 09:05:00`,
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '-',
-    status: '1',
-    arrStatus: '待复核',
-  },
-  {
-    arrNo: 'OP202602090101',
-    arrDate: '2026/02/09',
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    operCode: 'deptop01',
-    operName: '王宁',
-    telPhone: '021-55550001',
-    mobile: '13800000001',
-    userType: '3',
-    userType: '部门操作员',
-    userStatus: '4',
-    operStatus: '密码重置',
-    remark: '新增部门操作员',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/09 09:12:11',
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '-',
-    status: '1',
-    arrStatus: '待复核',
-  },
-  {
-    arrNo: 'OP202602090102',
-    arrDate: '2026/02/09',
-    opType: '2',
-    operType: '修改',
-    deptName: '清算管理部',
-    operCode: 'deptop02',
-    operName: '李娜',
-    telPhone: '021-55550002',
-    mobile: '13800000002',
-    userType: '3',
-    userType: '部门操作员',
-    userStatus: '1',
-    operStatus: '正常',
-    remark: '更新联系方式',
-    arrOperName: 'auditor01',
-    applyTime: '2026/02/09 09:40:11',
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '-',
-    status: '1',
-    arrStatus: '待复核',
-  },
-  {
-    arrNo: 'OP202602100101',
-    arrDate: '2026/02/10',
-    opType: '3',
-    operType: '注销',
-    deptName: '清算管理部',
-    operCode: 'deptop03',
-    operName: '赵敏',
-    telPhone: '021-55550003',
-    mobile: '13800000003',
-    userType: '3',
-    userType: '部门操作员',
-    userStatus: '3',
-    operStatus: '注销',
-    remark: '注销申请',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/10 09:00:00',
-    reviewOperName: '-',
-    reviewTime: '-',
-    revokeTime: '2026/02/10 09:30:00',
-    status: '4',
-    arrStatus: '已撤销',
-  },
-])
-
-const userOperatorStatusLabelMap: Record<string, string> = {
+const statusLabelMap: Record<string, string> = {
   '1': '待复核',
+  '2': '复核通过',
   '3': '复核拒绝',
   '4': '已撤销',
+  PENDING: '待复核',
+  APPROVED: '复核通过',
+  REJECTED: '复核拒绝',
+  REVOKED: '已撤销',
+  CANCELED: '已撤销',
 }
 
-const fillUserOperatorPendingList = () => {
-  const statuses = ['1', '3', '4']
-  while (list.value.length < 10) {
-    const idx = list.value.length + 1
-    const status = statuses[idx % statuses.length]
-    list.value.push({
-      arrNo: `OP${todayStr.replaceAll('/', '')}${String(idx).padStart(3, '0')}`,
-      arrDate: todayStr,
-      opType: '1',
-      operType: '新增',
-      deptName: '清算管理部',
-      operCode: `deptop${String(idx).padStart(2, '0')}`,
-      operName: `操作员${idx}`,
-      telPhone: '021-55550010',
-      mobile: `13800001${String(idx).padStart(3, '0')}`,
-      userType: '3',
-      userType: '部门操作员',
-      userStatus: '4',
-      operStatus: '密码重置',
-      remark: status === '3' ? '复核拒绝示例' : status === '4' ? '已撤销示例' : '待复核示例',
-      arrOperName: idx % 2 === 0 ? 'superadmin' : 'auditor01',
-      applyTime: `${todayStr} 10:${String(idx).padStart(2, '0')}:00`,
-      reviewOperName: '-',
-      reviewTime: '-',
-      revokeTime: status === '4' ? `${todayStr} 11:${String(idx).padStart(2, '0')}:00` : '-',
-      status,
-      arrStatus: userOperatorStatusLabelMap[status],
-    })
+const statusCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  PENDING: '1',
+  APPROVED: '2',
+  REJECTED: '3',
+  REVOKED: '4',
+  CANCELED: '4',
+}
+
+const statusTypeMap: Record<string, string> = {
+  '1': 'PENDING',
+  '2': 'APPROVED',
+  '3': 'REJECTED',
+  '4': 'REVOKED',
+}
+
+const opTypeLabelMap: Record<string, string> = {
+  '1': '新增',
+  '2': '修改',
+  '3': '注销',
+  '4': '冻结',
+  '5': '解冻',
+  '6': '重置密码',
+  '7': '绑定证书',
+  '8': '分配权限',
+  CREATE: '新增',
+  UPDATE: '修改',
+  MODIFY: '修改',
+  CANCEL: '注销',
+  FREEZE: '冻结',
+  UNFREEZE: '解冻',
+  RESET_PASSWORD: '重置密码',
+  BIND_CERT: '绑定证书',
+  ASSIGN_PERMISSIONS: '分配权限',
+}
+
+const opTypeCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  '5': '5',
+  '6': '6',
+  '7': '7',
+  '8': '8',
+  CREATE: '1',
+  UPDATE: '2',
+  MODIFY: '2',
+  CANCEL: '3',
+  FREEZE: '4',
+  UNFREEZE: '5',
+  RESET_PASSWORD: '6',
+  BIND_CERT: '7',
+  ASSIGN_PERMISSIONS: '8',
+}
+
+const formatDateTime = (value?: string) => {
+  if (!value) return '-'
+  return value.replace('T', ' ').replaceAll('-', '/')
+}
+
+const formatDate = (value?: string) => {
+  if (!value) return '-'
+  return formatDateTime(value).split(' ')[0]
+}
+
+const normalizeApply = (item: any) => {
+  const rawStatus = item.status ?? item.applyStatus ?? item.arrStatus ?? ''
+  const rawOpType = item.operationType ?? item.opType ?? item.operType ?? ''
+  const statusCode = statusCodeMap[rawStatus] ?? rawStatus ?? ''
+  const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
+  return {
+    id: item.id,
+    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrDate: formatDate(item.applyTime ?? item.arrDate),
+    opType: opTypeCode,
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
+    deptName: item.deptName ?? '-',
+    operCode: item.username ?? item.operCode ?? '-',
+    operName: item.fullName ?? item.operName ?? '-',
+    telPhone: item.officePhone ?? item.telPhone ?? '-',
+    mobile: item.mobilePhone ?? item.mobile ?? '-',
+    userType: item.userType ?? '3',
+    userTypeLabel: '部门操作员',
+    userStatus: item.userStatus ?? item.status ?? '-',
+    operStatus: item.operStatus ?? '-',
+    remark: item.remark ?? '-',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    applyTime: formatDateTime(item.applyTime),
+    reviewOperName: item.reviewOperName ?? '-',
+    reviewTime: formatDateTime(item.reviewTime),
+    revokeTime: formatDateTime(item.revokeTime),
+    status: statusCode,
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
   }
 }
 
-fillUserOperatorPendingList()
+const getDeptId = () => {
+  const raw = localStorage.getItem('deptId')
+  const val = raw ? Number(raw) : NaN
+  return Number.isFinite(val) && val > 0 ? val : undefined
+}
+
+const getOperatorId = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    const id = Number(user?.id)
+    return Number.isFinite(id) && id > 0 ? id : 1
+  } catch {
+    return 1
+  }
+}
+
+const buildQueryParams = () => {
+  const startDate = queryForm.value.startDate?.replaceAll('/', '-')
+  const endDate = queryForm.value.endDate?.replaceAll('/', '-')
+  const statusType =
+    queryForm.value.status !== 'all' ? statusTypeMap[queryForm.value.status] : undefined
+  const operationType =
+    queryForm.value.opType !== 'all'
+      ? ({
+          '1': 'CREATE',
+          '2': 'UPDATE',
+          '3': 'CANCEL',
+          '4': 'FREEZE',
+          '5': 'UNFREEZE',
+          '6': 'RESET_PASSWORD',
+          '7': 'BIND_CERT',
+          '8': 'ASSIGN_PERMISSIONS',
+        } as Record<string, string>)[queryForm.value.opType]
+      : undefined
+  return {
+    deptId: getDeptId(),
+    startDate,
+    endDate,
+    applyNo: queryForm.value.arrNo || undefined,
+    username: queryForm.value.operCode || undefined,
+    operationType,
+    statusType,
+  }
+}
+
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const response = await getOperatorApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    list.value = (items ?? []).map(normalizeApply)
+  } catch (error) {
+    list.value = []
+    ElMessage.error('获取操作员申请列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const toDate = (value: string) => {
   if (!value) return null
-  const parts = value.split('/')
+  const normalized = value.replaceAll('-', '/')
+  const parts = normalized.split('/')
   if (parts.length !== 3) return null
-  const [y, m, d] = parts.map(Number)
+  const y = Number(parts[0])
+  const m = Number(parts[1])
+  const d = Number(parts[2])
+  if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null
   return new Date(y, m - 1, d)
 }
 
@@ -452,6 +505,7 @@ const pagedList = computed(() => {
 
 const handleQuery = () => {
   currentPage.value = 1
+  fetchList()
 }
 
 const handleReset = () => {
@@ -462,15 +516,33 @@ const handleReset = () => {
     deptName: '',
     operCode: '',
     operName: '',
+
     userType: 'all',
     opType: 'all',
     status: 'all',
   }
   currentPage.value = 1
+  fetchList()
 }
 
-const handleDownload = () => {
-  ElMessage.success('下载成功')
+const downloadBlob = (data: Blob, filename: string) => {
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const handleDownload = async () => {
+  try {
+    const response = await exportOperatorApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const blob = payload instanceof Blob ? payload : new Blob([payload])
+    downloadBlob(blob, `操作员申请_${todayStr.replaceAll('/', '')}.xlsx`)
+  } catch (error) {
+    ElMessage.error('下载失败')
+  }
 }
 
 const dialogVisible = ref(false)
@@ -493,26 +565,13 @@ const editRules = {
   operName: [{ required: true, message: '请输入用户姓名', trigger: 'blur' }],
 }
 
-const postOptions = [
-  { id: 'P001', name: '清算操作岗' },
-  { id: 'P002', name: '风控操作岗' },
-  { id: 'P003', name: '监控操作岗' },
-]
+const postOptions = ref<{ id: string; name: string }[]>([])
 
 const selectedPosts = ref<string[]>([])
 
 const operateTreeRef = ref()
-const operateTree = ref([
-  {
-    id: 'O1',
-    label: '系统管理',
-    children: [
-      { id: 'O1-1', label: '部门维护' },
-      { id: 'O1-2', label: '用户维护' },
-    ],
-  },
-])
-const operateChecked = ref<string[]>(['O1-1'])
+const operateTree = ref<any[]>([])
+const operateChecked = ref<string[]>([])
 
 const reviewableOpTypes = ['1', '2', '7', '8']
 const canRevoke = (row: any) => row.status === '1' && row.arrOperName === currentUser
@@ -566,12 +625,32 @@ const handleReviewSave = async () => {
       return
     }
 
-    currentRow.value.status = '2'
-    currentRow.value.arrStatus = '复核通过'
-    currentRow.value.reviewOperName = currentUser
-    currentRow.value.reviewTime = todayStr + ' 10:30:00'
-    ElMessage.success('操作成功')
-    dialogVisible.value = false
+    reviewOperatorApplication(currentRow.value.id, {
+      approved: true,
+      reviewerId: getOperatorId(),
+      reviewerName: currentUser,
+      reviewRemark: '',
+      username: editForm.value.operCode,
+      fullName: editForm.value.operName,
+      officePhone: editForm.value.telPhone,
+      mobilePhone: editForm.value.mobile,
+      remark: editForm.value.remark,
+      positionIds: selectedPosts.value,
+      certIds: [],
+    })
+      .then(() => {
+        currentRow.value.status = '2'
+        currentRow.value.arrStatus = '复核通过'
+        currentRow.value.reviewOperName = currentUser
+        currentRow.value.reviewTime = todayStr + ' 10:30:00'
+        ElMessage.success('操作成功')
+      })
+      .catch(() => {
+        ElMessage.error('复核失败')
+      })
+      .finally(() => {
+        dialogVisible.value = false
+      })
   } catch {
     ElMessage.error('请检查必填项')
   }
@@ -586,16 +665,39 @@ const handleRevoke = (row: any) => {
     }
     return
   }
-  row.status = '4'
-  row.arrStatus = '已撤销'
-  row.revokeTime = todayStr + ' 11:00:00'
-  ElMessage.success('操作成功')
+  revokeOperatorApplication(row.id, getOperatorId())
+    .then(() => {
+      row.status = '4'
+      row.arrStatus = '已撤销'
+      row.revokeTime = todayStr + ' 11:00:00'
+      ElMessage.success('操作成功')
+    })
+    .catch(() => {
+      ElMessage.error('撤销失败')
+    })
 }
 
 const dialogTitle = computed(() => '复核')
 const closeDialog = () => {
   dialogVisible.value = false
 }
+
+const loadPosts = async () => {
+  try {
+    const response = await getPositionList({ deptId: getDeptId() })
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    postOptions.value =
+      items?.map((item: any) => ({ id: String(item.id), name: item.name ?? '-' })) ?? []
+  } catch {
+    postOptions.value = []
+  }
+}
+
+onMounted(() => {
+  fetchList()
+  loadPosts()
+})
 </script>
 
 <style scoped lang="scss">
@@ -611,8 +713,8 @@ const closeDialog = () => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -628,8 +730,8 @@ const closeDialog = () => {
 .query-form :deep(.el-select__wrapper),
 .query-form :deep(.el-date-editor) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-form :deep(.el-date-editor) {
@@ -720,17 +822,17 @@ const closeDialog = () => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 .table-pagination {
@@ -746,19 +848,19 @@ const closeDialog = () => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 @media (max-width: 1200px) {
@@ -780,7 +882,7 @@ const closeDialog = () => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 
 </style>

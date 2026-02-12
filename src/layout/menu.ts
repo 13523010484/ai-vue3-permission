@@ -341,7 +341,7 @@ export const getTabItems = (path: string) => {
   const trail = findMenuPath(path)
   if (!trail || trail.length < 2) return []
   const parent = trail[trail.length - 2]
-  if (!parent.children) return []
+  if (!parent || !parent.children) return []
   if (parent.children.every((item) => item.path)) return parent.children
   return []
 }

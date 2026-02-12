@@ -21,6 +21,53 @@
   --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
 }
 
+/* Brand theme */
+:root {
+  --brand-gold-700: #5f4603;
+  --brand-gold-600: #6a4c03;
+  --brand-gold-500: #7b5904;
+  --brand-gold-200: #d8c8a6;
+  --brand-gold-100: #ebe1cf;
+  --brand-brown: #7a5a2e;
+  --brand-brown-600: #6b532b;
+}
+
+/* App palette */
+:root {
+  --app-bg: #f3f2ee;
+  --app-surface: #ffffff;
+  --app-border: #e6e2db;
+  --app-table-header: #f5f1ea;
+  --app-row-odd: #fbfbfd;
+  --app-row-hover: #f6f2ea;
+  --app-panel-border: #eee3d1;
+  --app-divider: #f0e6d4;
+  --app-text-strong: #5b4a2f;
+  --app-text-title: #6b532b;
+  --app-text-muted: #a8abb2;
+  --app-disabled-bg: #dcdfe6;
+  --app-disabled-bg-light: #f5f7fa;
+}
+
+/* Element Plus theme */
+:root,
+body,
+#app {
+  --el-color-primary: var(--brand-gold-500) !important;
+  --el-color-primary-dark-2: #614603 !important;
+  --el-color-primary-light-3: #a07a2f !important;
+  --el-color-primary-light-5: #be9a60 !important;
+  --el-color-primary-light-7: #d7bc96 !important;
+  --el-color-primary-light-8: #e3ceb3 !important;
+  --el-color-primary-light-9: #f0e4cf !important;
+  --el-color-success: var(--brand-gold-500) !important;
+  --el-color-success-light-3: #a07a2f !important;
+  --el-color-success-light-5: #be9a60 !important;
+  --el-color-success-light-7: #d7bc96 !important;
+  --el-color-success-light-8: #e3ceb3 !important;
+  --el-color-success-light-9: #f0e4cf !important;
+}
+
 /* semantic color variables for this project */
 :root {
   --color-background: var(--vt-c-white);
@@ -105,6 +152,83 @@ body {
   --el-button-text-color: var(--el-color-primary);
 }
 
+.el-button--primary {
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  color: #ffffff !important;
+}
+
+.el-button--primary:hover,
+.el-button--primary:focus {
+  background-color: var(--el-color-primary-dark-2) !important;
+  border-color: var(--el-color-primary-dark-2) !important;
+}
+
+.el-button--success {
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+  color: #ffffff !important;
+}
+
+.el-button--success:hover,
+.el-button--success:focus {
+  background-color: var(--el-color-primary-dark-2) !important;
+  border-color: var(--el-color-primary-dark-2) !important;
+}
+
+.el-link--primary,
+.el-text--primary {
+  color: var(--el-color-primary) !important;
+}
+
+.el-tabs__item.is-active,
+.el-tabs__item:hover {
+  color: var(--el-color-primary) !important;
+}
+
+.el-tabs__active-bar {
+  background-color: var(--el-color-primary) !important;
+}
+
+.el-pagination.is-background .el-pager li.is-active {
+  background-color: var(--el-color-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Tag-like tabs in layout */
+.tab {
+  border-color: var(--el-color-primary-light-5);
+}
+
+.tab.active {
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner,
+.el-checkbox__input.is-indeterminate .el-checkbox__inner,
+.el-radio__input.is-checked .el-radio__inner {
+  background-color: var(--el-color-primary) !important;
+  border-color: var(--el-color-primary) !important;
+}
+
+.el-switch.is-checked .el-switch__core {
+  border-color: var(--el-color-primary) !important;
+  background-color: var(--el-color-primary) !important;
+}
+
+.el-tag--primary,
+.el-tag--success {
+  background-color: var(--el-color-primary-light-9) !important;
+  border-color: var(--el-color-primary-light-5) !important;
+  color: var(--el-color-primary) !important;
+}
+
+.el-tag--primary.is-closable .el-tag__close,
+.el-tag--success.is-closable .el-tag__close {
+  color: var(--el-color-primary) !important;
+}
+
 .action-col .cell {
   white-space: nowrap !important;
   display: flex;
@@ -118,7 +242,8 @@ body {
 }
 
 .el-table .action-col {
-  min-width: max-content;
+  width: 1%;
+  min-width: auto;
 }
 
 .el-table__fixed-right .cell {
@@ -126,12 +251,28 @@ body {
 }
 
 .action-col .el-button {
-  background-color: transparent;
-  border-color: transparent;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
   color: var(--el-color-primary);
   padding: 0 4px;
 }
 
+.action-col .el-button:not(.is-disabled) {
+  color: var(--el-color-primary) !important;
+}
+
 .action-col .el-button + .el-button {
-  margin-left: 8px;
+  margin-left: 12px;
+}
+
+.action-col .el-button.is-disabled,
+.action-col .el-button.is-disabled:hover,
+.action-col .el-button.is-disabled:focus {
+  color: #999 !important;
+  opacity: 1 !important;
+}
+
+.action-col .el-button.is-disabled .el-button__text {
+  color: #999 !important;
 }

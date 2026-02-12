@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="dept-page">
     <el-card class="page-card query-card" shadow="never">
       <el-form :model="queryForm" label-width="90px" class="query-form">
@@ -8,7 +8,6 @@
               <el-input
                 v-model="queryForm.deptName"
                 placeholder="模糊查询，最多50字"
-                maxlength="50"
                 clearable
               />
             </el-form-item>
@@ -45,8 +44,8 @@
         </div>
       </div>
       <div class="table-wrap">
-        <el-table ref="tableRef" :data="list" border stripe class="dept-table" v-loading="loading">
-          <el-table-column type="index" label="序号" width="70" fixed="left" />
+        <el-table ref="tableRef" :data="list" border stripe class="dept-table" v-loading="loading" table-layout="auto">
+          <el-table-column class-name="action-col" type="index" label="序号" width="70" fixed="left" />
           <el-table-column prop="deptName" label="部门名称" min-width="180">
             <template #default="{ row }">
               <el-tooltip v-if="row.deptName.length > 10" :content="row.deptName">
@@ -55,14 +54,14 @@
               <span v-else>{{ row.deptName }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="部门状态" min-width="120">
+          <el-table-column class-name="action-col" prop="deptStatus" label="部门状态" min-width="120">
             <template #default="{ row }">
-              <el-tag :type="row.status === '1' ? 'success' : 'info'">
-                {{ statusLabel(row.status) }}
+              <el-tag :type="row.deptStatus === 'NORMAL' ? 'success' : 'info'">
+                {{ statusLabel(row.deptStatus) }}
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="remark" label="备注" min-width="180">
+          <el-table-column class-name="action-col" prop="remark" label="备注" min-width="180">
             <template #default="{ row }">
               <el-tooltip v-if="row.remark && row.remark.length > 10" :content="row.remark">
                 <span>{{ truncateText(row.remark, 10) }}</span>
@@ -70,29 +69,25 @@
               <span v-else>{{ row.remark || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="inputOperName" label="录入人" min-width="120" />
-          <el-table-column prop="inputTime" label="录入时间" min-width="170" />
-          <el-table-column prop="updateOperName" label="更新人" min-width="120" />
-          <el-table-column prop="updateTime" label="更新时间" min-width="170" />
+          <el-table-column class-name="action-col" prop="createdOperName" label="录入人" min-width="120" />
+          <el-table-column prop="createdAt" label="录入时间" min-width="170" />
+          <el-table-column prop="updatedOperName" label="更新人" min-width="120" />
+          <el-table-column prop="updatedAt" label="更新时间" min-width="170" />
           <el-table-column prop="reviewOperName" label="复核人" min-width="120" />
           <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
-          <el-table-column class-name="action-col" label="操作" min-width="240" fixed="right">
+          <el-table-column class-name="action-col action-col--ops" label="操作" width="1" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" @click="openDetailDialog(row)">详情</el-button>
-              <el-button link type="primary" @click="openUserDialog(row)">用户查询</el-button>
-              <el-button
-                link
+              <el-button link size="small" type="primary" @click="openDetailDialog(row)">详情</el-button>
+              <el-button link size="small" type="primary" @click="openUserDialog(row)">用户查询</el-button>
+              <el-button link size="small"
                 type="primary"
                 @click="openEditDialog(row)"
-                :disabled="row.status !== '1'"
-              >
-                修改
-              </el-button>
-              <el-button
-                link
+                :disabled="row.deptStatus !== 'NORMAL'"
+              >修改</el-button>
+              <el-button link size="small"
                 type="danger"
                 @click="handleLogout(row)"
-                :disabled="row.status !== '1'"
+                :disabled="row.deptStatus !== 'NORMAL'"
                 >注销</el-button
               >
             </template>
@@ -136,7 +131,7 @@ import { storeToRefs } from 'pinia'
 import { useDepartmentStore } from '@/stores/department'
 import type { DeptRow } from '@/types/department'
 
-type StatusValue = '1' | '2' | ''
+type StatusValue = 'NORMAL' | 'CANCELED' | ''
 
 interface QueryForm {
   deptName: string
@@ -144,8 +139,8 @@ interface QueryForm {
 }
 
 const statusOptions = [
-  { value: '1', label: '正常' },
-  { value: '2', label: '注销' },
+  { value: 'NORMAL', label: '正常' },
+  { value: 'CANCELED', label: '注销' },
 ]
 
 const queryForm = ref<QueryForm>({ deptName: '', status: '' as StatusValue })
@@ -177,7 +172,9 @@ const truncateText = (text: string, size: number) => {
 }
 
 const statusLabel = (value: string) => {
-  const hit = statusOptions.find((item) => item.value === value)
+  const normalized =
+    value === '1' ? 'NORMAL' : value === '2' ? 'CANCELED' : value
+  const hit = statusOptions.find((item) => item.value === normalized)
   return hit ? hit.label : '-'
 }
 
@@ -186,7 +183,7 @@ const dialogMode = ref<'add' | 'edit' | 'detail'>('add')
 
 const editForm = ref({ deptName: '', remark: '' })
 
-const editRules = { deptName: [{ required: true, message: '请录入部门名称', trigger: 'blur' }] }
+const editRules = { deptName: [{ required: true, message: '请输入部门名称', trigger: 'blur' }] }
 
 const authChecked = ref<string[]>([])
 const operateChecked = ref<string[]>([])
@@ -203,7 +200,12 @@ const userVisible = ref(false)
 const openUserDialog = async (row: DeptRow) => {
   try {
     const response = await store.fetchDeptUsers(row.id)
-    deptUsers.value = Array.isArray(response?.data) ? response.data : response || []
+    const data = Array.isArray(response?.data)
+      ? response.data
+      : Array.isArray(response)
+        ? response
+        : []
+    deptUsers.value = data
     userVisible.value = true
   } catch (error) {
     console.error('获取部门用户失败:', error)
@@ -267,12 +269,12 @@ const handleSaveEdit = async (
 }
 
 const handleLogout = async (row: DeptRow) => {
-  if (row.status !== '1') {
-    ElMessage.error('该部门状态已是注销状态不能进行注销操作')
+  if (row.deptStatus !== 'NORMAL') {
+    ElMessage.error('该部门状态非正常，不能注销')
     return
   }
   try {
-    await ElMessageBox.confirm(`确认注销 ${row.deptName} ?`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(`确定注销 ${row.deptName} ?`, '提示', { type: 'warning' })
     await store.logoutDept(row.id)
     ElMessage.success('操作成功')
     handleQuery()
@@ -300,8 +302,8 @@ onMounted(async () => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -313,11 +315,15 @@ onMounted(async () => {
   margin-bottom: 18px;
 }
 
+.query-form :deep(.el-form-item__content) {
+  align-items: center;
+}
+
 .query-form :deep(.el-input__wrapper),
 .query-form :deep(.el-select__wrapper) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-actions {
@@ -325,7 +331,7 @@ onMounted(async () => {
   gap: 12px;
   justify-content: flex-end;
   align-items: center;
-  height: 100%;
+  height: 40px;
 }
 
 .table-card {
@@ -355,21 +361,21 @@ onMounted(async () => {
 }
 
 .table-actions :deep(.el-button--primary) {
-  background: #c9a35c;
-  border-color: #c9a35c;
-  color: #fff;
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: var(--app-surface);
 }
 
 .table-actions :deep(.el-button--success) {
-  background: #b4925e;
-  border-color: #b4925e;
-  color: #fff;
+  background: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
+  color: var(--app-surface);
 }
 
 .table-actions :deep(.el-button--primary.is-plain) {
-  background: #fff;
-  color: #8a6a3e;
-  border-color: #d9c7a8;
+  background: var(--app-surface);
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-5);
 }
 
 .table-wrap {
@@ -408,31 +414,31 @@ onMounted(async () => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 .tree-section {
   margin-top: 16px;
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid #eee3d1;
-  background: #fffaf3;
+  border: 1px solid var(--app-panel-border);
+  background: var(--app-surface);
 }
 
 .tree-title {
   font-weight: 600;
   margin-bottom: 8px;
-  color: #6b532b;
+  color: var(--app-text-title);
 }
 
 .readonly-tree {
@@ -447,18 +453,18 @@ onMounted(async () => {
 }
 
 :deep(.el-button--primary) {
-  background: #c9a35c;
-  border-color: #c9a35c;
+  background: var(--el-color-primary);
+  border-color: var(--el-color-primary);
 }
 
 :deep(.el-button--success) {
-  background: #b4925e;
-  border-color: #b4925e;
+  background: var(--el-color-primary-dark-2);
+  border-color: var(--el-color-primary-dark-2);
 }
 
 :deep(.el-button--primary.is-plain) {
-  color: #8a6a3e;
-  border-color: #d9c7a8;
+  color: var(--el-color-primary);
+  border-color: var(--el-color-primary-light-5);
 }
 
 :deep(.el-table .el-button--primary),
@@ -475,19 +481,19 @@ onMounted(async () => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 @media (max-width: 1200px) {
@@ -508,6 +514,7 @@ onMounted(async () => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 </style>
+

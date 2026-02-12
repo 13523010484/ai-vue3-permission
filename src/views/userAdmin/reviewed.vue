@@ -138,9 +138,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
+import { exportAdminApplications, getAdminApplications } from '@/api/userAdmin'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -156,6 +157,7 @@ const queryForm = ref({
   deptName: '',
   operCode: '',
   operName: '',
+
   userType: 'all' as UserTypeValue,
   opType: 'all' as OpTypeValue,
   status: '2',
@@ -185,137 +187,141 @@ const opTypeOptions = [
 
 const statusOptions = [{ value: '2', label: '复核通过' }]
 
-const list = ref([
-  {
-    arrNo: `UA${todayStr.replaceAll('/', '')}0001`,
-    arrDate: todayStr,
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    operCode: 'deptadminToday',
-    operName: '今日新增',
-    telPhone: '021-55550010',
-    mobile: '13800001000',
-    userType: '2',
-    userType: '部门管理员',
-    userStatus: '4',
-    operStatus: '密码重置',
-    remark: '今日新增部门管理员',
-    arrOperName: 'superadmin',
-    applyTime: `${todayStr} 09:05:00`,
-    reviewOperName: 'auditor01',
-    reviewTime: `${todayStr} 10:00:00`,
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-  {
-    arrNo: 'UA202602090001',
-    arrDate: '2026/02/09',
-    opType: '1',
-    operType: '新增',
-    deptName: '清算管理部',
-    operCode: 'deptadmin01',
-    operName: '王宁',
-    telPhone: '021-55550001',
-    mobile: '13800000001',
-    userType: '2',
-    userType: '部门管理员',
-    userStatus: '4',
-    operStatus: '密码重置',
-    remark: '新增部门管理员',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/09 09:12:11',
-    reviewOperName: 'auditor01',
-    reviewTime: '2026/02/09 10:01:00',
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-  {
-    arrNo: 'UA202602090002',
-    arrDate: '2026/02/09',
-    opType: '2',
-    operType: '修改',
-    deptName: '技术保障部',
-    operCode: 'deptadmin02',
-    operName: '李娜',
-    telPhone: '021-55550002',
-    mobile: '13800000002',
-    userType: '3',
-    userType: '部门操作员',
-    userStatus: '1',
-    operStatus: '正常',
-    remark: '更新联系方式',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/09 09:40:11',
-    reviewOperName: 'auditor01',
-    reviewTime: '2026/02/09 10:12:00',
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-  {
-    arrNo: 'UA202602100001',
-    arrDate: '2026/02/10',
-    opType: '3',
-    operType: '注销',
-    deptName: '风控管理部',
-    operCode: 'direct01',
-    operName: '赵敏',
-    telPhone: '021-55550003',
-    mobile: '13800000003',
-    userType: '7',
-    userType: '直联用户',
-    userStatus: '3',
-    operStatus: '注销',
-    remark: '注销直联用户',
-    arrOperName: 'superadmin',
-    applyTime: '2026/02/10 09:00:00',
-    reviewOperName: 'auditor02',
-    reviewTime: '2026/02/10 10:05:00',
-    revokeTime: '-',
-    status: '2',
-    arrStatus: '复核通过',
-  },
-])
+const list = ref<any[]>([])
+const loading = ref(false)
 
-const fillUserAdminReviewedList = () => {
-  while (list.value.length < 10) {
-    const idx = list.value.length + 1
-    list.value.push({
-      arrNo: `UA${todayStr.replaceAll('/', '')}${String(idx).padStart(3, '0')}`,
-      arrDate: todayStr,
-      opType: '1',
-      operType: '新增',
-      deptName: '清算管理部',
-      operCode: `deptadmin${idx}`,
-      operName: `管理员${idx}`,
-      telPhone: '021-55550010',
-      mobile: `13800001${String(idx).padStart(3, '0')}`,
-      userType: '2',
-      userType: '部门管理员',
-      userStatus: '4',
-      operStatus: '密码重置',
-      remark: '今日复核通过',
-      arrOperName: 'superadmin',
-      applyTime: `${todayStr} 09:${String(idx).padStart(2, '0')}:00`,
-      reviewOperName: 'auditor01',
-      reviewTime: `${todayStr} 10:${String(idx).padStart(2, '0')}:00`,
-      revokeTime: '-',
-      status: '2',
-      arrStatus: '复核通过',
-    })
+const statusLabelMap: Record<string, string> = {
+  '1': '待复核',
+  '2': '复核通过',
+  '3': '复核拒绝',
+  '4': '已撤销',
+  PENDING: '待复核',
+  APPROVED: '复核通过',
+  REJECTED: '复核拒绝',
+  REVOKED: '已撤销',
+  CANCELED: '已撤销',
+}
+const statusCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  PENDING: '1',
+  APPROVED: '2',
+  REJECTED: '3',
+  REVOKED: '4',
+  CANCELED: '4',
+}
+const opTypeLabelMap: Record<string, string> = {
+  '1': '新增',
+  '2': '修改',
+  '3': '注销',
+  '4': '冻结',
+  '5': '解冻',
+  '6': '重置密码',
+  '7': '绑定证书',
+  CREATE: '新增',
+  UPDATE: '修改',
+  MODIFY: '修改',
+  CANCEL: '注销',
+  FREEZE: '冻结',
+  UNFREEZE: '解冻',
+  RESET_PASSWORD: '重置密码',
+  BIND_CERT: '绑定证书',
+}
+const opTypeCodeMap: Record<string, string> = {
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  '5': '5',
+  '6': '6',
+  '7': '7',
+  CREATE: '1',
+  UPDATE: '2',
+  MODIFY: '2',
+  CANCEL: '3',
+  FREEZE: '4',
+  UNFREEZE: '5',
+  RESET_PASSWORD: '6',
+  BIND_CERT: '7',
+}
+const formatDateTime = (value?: string) => (!value ? '-' : value.replace('T', ' ').replaceAll('-', '/'))
+const formatDate = (value?: string) => (!value ? '-' : formatDateTime(value).split(' ')[0])
+const normalizeApply = (item: any) => {
+  const rawStatus = item.status ?? item.applyStatus ?? item.arrStatus ?? ''
+  const rawOpType = item.operationType ?? item.opType ?? item.operType ?? ''
+  const statusCode = statusCodeMap[rawStatus] ?? rawStatus ?? ''
+  const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
+  return {
+    id: item.id,
+    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrDate: formatDate(item.applyTime ?? item.arrDate),
+    opType: opTypeCode,
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
+    deptName: item.deptName ?? '-',
+    operCode: item.username ?? item.operCode ?? '-',
+    operName: item.fullName ?? item.operName ?? '-',
+    telPhone: item.officePhone ?? item.telPhone ?? '-',
+    mobile: item.mobilePhone ?? item.mobile ?? '-',
+    userType: item.userType ?? '2',
+    userTypeLabel: '部门管理员',
+    userStatus: item.userStatus ?? item.status ?? '-',
+    operStatus: item.operStatus ?? '-',
+    remark: item.remark ?? '-',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    applyTime: formatDateTime(item.applyTime),
+    reviewOperName: item.reviewOperName ?? '-',
+    reviewTime: formatDateTime(item.reviewTime),
+    revokeTime: formatDateTime(item.revokeTime),
+    status: statusCode,
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
   }
 }
-
-fillUserAdminReviewedList()
+const getDeptId = () => {
+  const raw = localStorage.getItem('deptId')
+  const val = raw ? Number(raw) : NaN
+  return Number.isFinite(val) && val > 0 ? val : undefined
+}
+const buildQueryParams = () => {
+  const startDate = queryForm.value.startDate?.replaceAll('/', '-')
+  const endDate = queryForm.value.endDate?.replaceAll('/', '-')
+  const operationType = queryForm.value.opType !== 'all'
+    ? ({ '1': 'CREATE', '2': 'UPDATE', '3': 'CANCEL', '4': 'FREEZE', '5': 'UNFREEZE', '6': 'RESET_PASSWORD', '7': 'BIND_CERT' } as Record<string, string>)[queryForm.value.opType]
+    : undefined
+  return {
+    deptId: getDeptId(),
+    startDate,
+    endDate,
+    applyNo: queryForm.value.arrNo || undefined,
+    username: queryForm.value.operCode || undefined,
+    operationType,
+    statusType: 'APPROVED',
+  }
+}
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const response = await getAdminApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const items = Array.isArray(payload) ? payload : payload?.data
+    list.value = (items ?? []).map(normalizeApply)
+  } catch {
+    list.value = []
+    ElMessage.error('获取管理员申请列表失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 const toDate = (value: string) => {
   if (!value) return null
   const parts = value.split('/')
   if (parts.length !== 3) return null
-  const [y, m, d] = parts.map(Number)
+  const y = Number(parts[0])
+  const m = Number(parts[1])
+  const d = Number(parts[2])
+  if (Number.isNaN(y) || Number.isNaN(m) || Number.isNaN(d)) return null
   return new Date(y, m - 1, d)
 }
 
@@ -354,6 +360,7 @@ const pagedList = computed(() => {
 
 const handleQuery = () => {
   currentPage.value = 1
+  fetchList()
 }
 
 const handleReset = () => {
@@ -369,11 +376,31 @@ const handleReset = () => {
     status: '2',
   }
   currentPage.value = 1
+  fetchList()
 }
 
-const handleDownload = () => {
-  ElMessage.success('下载成功')
+const downloadBlob = (data: Blob, filename: string) => {
+  const url = URL.createObjectURL(data)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
+const handleDownload = async () => {
+  try {
+    const response = await exportAdminApplications(buildQueryParams())
+    const payload = response?.data ?? response
+    const blob = payload instanceof Blob ? payload : new Blob([payload])
+    downloadBlob(blob, `管理员申请_复核_${todayStr.replaceAll('/', '')}.xlsx`)
+  } catch {
+    ElMessage.error('下载失败')
+  }
+}
+
+onMounted(() => {
+  fetchList()
+})
 </script>
 
 <style scoped lang="scss">
@@ -389,8 +416,8 @@ const handleDownload = () => {
 .page-card {
   margin-bottom: 16px;
   border-radius: 10px;
-  border: 1px solid #e6e2db;
-  background: #ffffff;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
   box-shadow: 0 6px 20px rgba(114, 93, 60, 0.08);
 }
 
@@ -406,8 +433,8 @@ const handleDownload = () => {
 .query-form :deep(.el-select__wrapper),
 .query-form :deep(.el-date-editor) {
   border-radius: 6px;
-  box-shadow: inset 0 0 0 1px #e6e2db;
-  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--app-border);
+  background: var(--app-surface);
 }
 
 .query-form :deep(.el-date-editor) {
@@ -498,17 +525,17 @@ const handleDownload = () => {
 }
 
 :deep(.el-table th.el-table__cell) {
-  background: #f5f1ea;
-  color: #5b4a2f;
+  background: var(--app-table-header);
+  color: var(--app-text-strong);
   font-weight: 600;
 }
 
 :deep(.el-table__row:nth-child(odd)) {
-  background: #fbfbfd;
+  background: var(--app-row-odd);
 }
 
 :deep(.el-table__row:hover) {
-  background: #f6f2ea;
+  background: var(--app-row-hover);
 }
 
 .table-pagination {
@@ -524,19 +551,19 @@ const handleDownload = () => {
 }
 
 .panel {
-  border: 1px solid #eee3d1;
+  border: 1px solid var(--app-panel-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--app-surface);
   padding: 12px;
   min-height: 420px;
 }
 
 .panel-title {
   font-weight: 600;
-  color: #6b532b;
+  color: var(--app-text-title);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #f0e6d4;
+  border-bottom: 1px solid var(--app-divider);
 }
 
 .tree-disabled {
@@ -547,7 +574,7 @@ const handleDownload = () => {
 .tree-disabled :deep(.el-tree-node__content),
 .tree-disabled :deep(.el-tree-node__label),
 .tree-disabled :deep(.el-checkbox__label) {
-  color: #a8abb2;
+  color: var(--app-text-muted);
 }
 
 .tree-disabled :deep(.el-tree-node__content:hover) {
@@ -556,13 +583,13 @@ const handleDownload = () => {
 
 .tree-disabled :deep(.el-checkbox__input.is-checked .el-checkbox__inner),
 .tree-disabled :deep(.el-checkbox__input.is-indeterminate .el-checkbox__inner) {
-  background-color: #dcdfe6;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg);
+  border-color: var(--app-disabled-bg);
 }
 
 .tree-disabled :deep(.el-checkbox__input .el-checkbox__inner) {
-  background-color: #f5f7fa;
-  border-color: #dcdfe6;
+  background-color: var(--app-disabled-bg-light);
+  border-color: var(--app-disabled-bg);
 }
 
 @media (max-width: 1200px) {
@@ -584,7 +611,7 @@ const handleDownload = () => {
 }
 
 .table-wrap :deep(.el-table__header) {
-  background: #f5f1ea;
+  background: var(--app-table-header);
 }
 
 </style>
