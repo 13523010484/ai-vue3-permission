@@ -1,0 +1,1 @@
+FILES=(".\\src\\views\\department\\reviewed.vue" ".\\src\\views\\department\\pending.vue" ".\\src\\views\\department\\query.vue" ".\\src\\views\\post\\reviewed.vue" ".\\src\\views\\post\\pending.vue" ".\\src\\views\\post\\query.vue" ".\\src\\views\\user-admin\\reviewed.vue" ".\\src\\views\\user-admin\\pending.vue" ".\\src\\views\\user-admin\\query.vue")
