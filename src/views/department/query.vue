@@ -66,7 +66,7 @@
               <el-tooltip v-if="row.remark && row.remark.length > 10" :content="row.remark">
                 <span>{{ truncateText(row.remark, 10) }}</span>
               </el-tooltip>
-              <span v-else>{{ row.remark || '-' }}</span>
+              <span v-else>{{ row.remark || '' }}</span>
             </template>
           </el-table-column>
           <el-table-column class-name="action-col" prop="createdOperName" label="录入人" min-width="120" />
@@ -167,7 +167,7 @@ const handleDownload = () => {
 }
 
 const truncateText = (text: string, size: number) => {
-  if (!text) return '-'
+  if (!text) return ''
   return text.length > size ? `${text.slice(0, size)}…` : text
 }
 
@@ -517,4 +517,5 @@ onMounted(async () => {
   background: var(--app-table-header);
 }
 </style>
+
 

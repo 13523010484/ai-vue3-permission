@@ -64,7 +64,7 @@
               <el-tooltip v-if="row.remark && row.remark.length > 10" :content="row.remark">
                 <span>{{ truncateText(row.remark, 10) }}</span>
               </el-tooltip>
-              <span v-else>{{ row.remark || '-' }}</span>
+              <span v-else>{{ row.remark || '' }}</span>
             </template>
           </el-table-column>
           <el-table-column class-name="action-col" prop="createdOperName" label="录入人" min-width="120" />
@@ -289,7 +289,7 @@ const getApplicantInfo = () => {
 }
 
 const formatDateTime = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return value.replace('T', ' ').replaceAll('-', '/')
 }
 const normalizeAdmin = (item: any): UserRow => {
@@ -297,19 +297,19 @@ const normalizeAdmin = (item: any): UserRow => {
   const status = statusCodeMap[rawStatus] ?? '1'
   return {
     id: String(item.id ?? ''),
-    deptName: item.deptName ?? '-',
-    operCode: item.username ?? '-',
-    operName: item.fullName ?? '-',
-    telPhone: item.officePhone ?? '-',
-    mobile: item.mobilePhone ?? '-',
+    deptName: item.deptName ?? '',
+    operCode: item.username ?? '',
+    operName: item.fullName ?? '',
+    telPhone: item.officePhone ?? '',
+    mobile: item.mobilePhone ?? '',
     status,
-    operStatus: statusLabelMap[rawStatus] ?? statusLabelMap[status] ?? '-',
-    remark: item.remark ?? '-',
-    createdOperName: item.createdOperName ?? '-',
+    operStatus: statusLabelMap[rawStatus] ?? statusLabelMap[status] ?? '',
+    remark: item.remark ?? '',
+    createdOperName: item.createdOperName ?? '',
     createdAt: formatDateTime(item.createdAt),
-    updatedOperName: item.updatedOperName ?? '-',
+    updatedOperName: item.updatedOperName ?? '',
     updatedAt: formatDateTime(item.updatedAt),
-    reviewOperName: item.reviewOperName ?? '-',
+    reviewOperName: item.reviewOperName ?? '',
     reviewTime: formatDateTime(item.reviewTime),
     isSelf: false,
   }
@@ -543,7 +543,7 @@ const handleBindQuery = async () => {
     const items = Array.isArray(payload) ? payload : payload?.data
     const keyword = bindQuery.value.certDN.trim()
     bindTable.value = (items ?? [])
-      .map((item: any) => ({ certId: Number(item.certId ?? 0), certNo: item.certNo ?? '-', certName: item.certName ?? '-', selected: !!item.selected }))
+      .map((item: any) => ({ certId: Number(item.certId ?? 0), certNo: item.certNo ?? '', certName: item.certName ?? '', selected: !!item.selected }))
       .filter((item: CertOption) => !keyword || item.certNo.includes(keyword) || item.certName.includes(keyword))
     selectedCertIds.value = bindTable.value.filter((item) => item.selected).map((item) => item.certId)
   } catch {
@@ -786,4 +786,5 @@ onMounted(() => {
 }
 
 </style>
+
 

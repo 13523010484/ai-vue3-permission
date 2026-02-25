@@ -9,11 +9,11 @@
       </div>
       <div class="top-nav"></div>
       <div class="user-area">
-        <span class="hello">Hi~ ai, 下午好!</span>
+        <span class="hello">Hi~ {{ displayName }}, {{ greetingText }}!</span>
         <el-dropdown trigger="hover" @command="handleUserCommand">
           <div class="user-trigger">
-            <div class="avatar">G</div>
-            <span class="user-name">ai</span>
+            <div class="avatar">{{ avatarText }}</div>
+            <span class="user-name">{{ displayName }}</span>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
@@ -72,6 +72,44 @@ const router = useRouter()
 const authStore = useAuthStore()
 const isCollapsed = ref(false)
 const tabsRef = ref<HTMLElement | null>(null)
+
+const getUserInfo = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return user ?? {}
+  } catch {
+    return {}
+  }
+}
+
+const userInfo = getUserInfo() as Record<string, any>
+const displayName = computed(
+  () =>
+    String(
+      userInfo.operCode ??
+        userInfo.username ??
+        userInfo.userCode ??
+        userInfo.name ??
+        userInfo.fullName ??
+        userInfo.realName ??
+        userInfo.operName ??
+        '用户',
+    ),
+)
+
+const avatarText = computed(() => {
+  const name = displayName.value.trim()
+  if (!name) return 'U'
+  return name.slice(0, 1).toUpperCase()
+})
+
+const greetingText = computed(() => {
+  const hour = new Date().getHours()
+  if (hour < 12) return '上午好'
+  if (hour < 18) return '下午好'
+  return '晚上好'
+})
 
 const isActive = (path: string) => route.path === path
 
@@ -227,6 +265,25 @@ const handleUserCommand = async (command: string | number | object) => {
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.user-trigger:hover,
+.user-trigger:focus,
+.user-trigger:focus-visible,
+.user-trigger:active {
+  border: none;
+  outline: none;
+  box-shadow: none;
+}
+
+.user-area :deep(.el-tooltip__trigger:focus-visible),
+.user-area :deep(.el-tooltip__trigger:focus),
+.user-area :deep(.el-tooltip__trigger:hover) {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 .avatar {

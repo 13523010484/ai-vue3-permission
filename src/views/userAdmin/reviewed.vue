@@ -257,27 +257,27 @@ const normalizeApply = (item: any) => {
   const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
   return {
     id: item.id,
-    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrNo: item.applyNo ?? item.arrNo ?? '',
     arrDate: formatDate(item.applyTime ?? item.arrDate),
     opType: opTypeCode,
-    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
-    deptName: item.deptName ?? '-',
-    operCode: item.username ?? item.operCode ?? '-',
-    operName: item.fullName ?? item.operName ?? '-',
-    telPhone: item.officePhone ?? item.telPhone ?? '-',
-    mobile: item.mobilePhone ?? item.mobile ?? '-',
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '',
+    deptName: item.deptName ?? '',
+    operCode: item.username ?? item.operCode ?? '',
+    operName: item.fullName ?? item.operName ?? '',
+    telPhone: item.officePhone ?? item.telPhone ?? '',
+    mobile: item.mobilePhone ?? item.mobile ?? '',
     userType: item.userType ?? '2',
     userTypeLabel: '部门管理员',
-    userStatus: item.userStatus ?? item.status ?? '-',
-    operStatus: item.operStatus ?? '-',
-    remark: item.remark ?? '-',
-    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    userStatus: item.userStatus ?? item.status ?? '',
+    operStatus: item.operStatus ?? '',
+    remark: item.remark ?? '',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '',
     applyTime: formatDateTime(item.applyTime),
-    reviewOperName: item.reviewOperName ?? '-',
+    reviewOperName: item.reviewOperName ?? '',
     reviewTime: formatDateTime(item.reviewTime),
     revokeTime: formatDateTime(item.revokeTime),
     status: statusCode,
-    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '',
   }
 }
 const getDeptId = () => {
@@ -608,4 +608,5 @@ onMounted(() => {
 }
 
 </style>
+
 

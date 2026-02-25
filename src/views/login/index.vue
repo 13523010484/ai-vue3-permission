@@ -2,7 +2,7 @@
   <div class="login-container">
     <el-card class="login-wrap">
       <template #header>
-        <div class="card-header">鐧诲綍</div>
+        <div class="card-header">登录</div>
       </template>
 
       <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="auto">
@@ -92,7 +92,7 @@ const handleLogin = async () => {
     ElMessage.success('登录成功!')
     router.push('/department/query')
   } catch (error) {
-    console.error('鏍￠獙澶辫触:', error)
+    console.error('校验失败:', error)
     const message =
       (error as any)?.response?.data?.message ||
       (error as any)?.message ||

@@ -93,8 +93,8 @@
 <el-table-column prop="arrStatus" label="申请状态" min-width="120" />
           <el-table-column label="操作" width="1" fixed="right" class-name="action-col action-col--ops">
 <template #default="{ row }">
-              <el-button link size="small" type="primary" @click="openReviewDialog(row)">复核</el-button>
-              <el-button link size="small" type="danger" @click="handleRevoke(row)">撤销</el-button>
+              <el-button link size="small" type="primary" @click="openReviewDialog(row)" :disabled="!canReview(row)">复核</el-button>
+              <el-button link size="small" type="danger" @click="handleRevoke(row)" :disabled="!canRevoke(row)">撤销</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -182,27 +182,6 @@ const getCurrentUserCode = () => {
   }
 }
 
-const getCurrentUserId = () => {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    const user = raw ? JSON.parse(raw) : null
-    const id = Number(user?.id)
-    return Number.isFinite(id) ? id : undefined
-  } catch {
-    return undefined
-  }
-}
-
-const getCurrentDeptName = () => {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    const user = raw ? JSON.parse(raw) : null
-    return String(user?.deptName ?? '')
-  } catch {
-    return ''
-  }
-}
-
 const list = ref<any[]>([])
 const loading = ref(false)
 const store = usePostStore()
@@ -259,12 +238,12 @@ const opTypeCodeMap: Record<string, string> = {
 }
 
 const formatDateTime = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return value.replace('T', ' ').replaceAll('-', '/')
 }
 
 const formatDate = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return formatDateTime(value).split(' ')[0]
 }
 
@@ -275,24 +254,24 @@ const normalizeApply = (item: any) => {
   const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
   return {
     id: item.id,
-    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrNo: item.applyNo ?? item.arrNo ?? '',
     arrDate: formatDate(item.applyTime ?? item.arrDate),
     opType: opTypeCode,
-    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
-    deptName: item.deptName ?? '-',
-    postName: item.positionName ?? item.postName ?? '-',
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '',
+    deptName: item.deptName ?? '',
+    postName: item.positionName ?? item.postName ?? '',
     postType: item.postType ?? '内部',
-    postStatus: item.positionStatus ?? item.postStatus ?? '-',
-    remark: item.remark ?? item.deptRemark ?? '-',
+    postStatus: item.positionStatus ?? item.postStatus ?? '',
+    remark: item.remark ?? item.deptRemark ?? '',
     arrOperId: item.applicantId ?? item.arrOperId ?? item.operId ?? item.userId,
     arrOperCode: item.applicantCode ?? item.operCode ?? item.username ?? item.userCode ?? '',
-    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '',
     applyTime: formatDateTime(item.applyTime ?? item.applyTime),
-    reviewOperName: item.reviewOperName ?? '-',
+    reviewOperName: item.reviewOperName ?? '',
     reviewTime: formatDateTime(item.reviewTime),
     revokeTime: formatDateTime(item.revokeTime),
     status: statusCode,
-    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '',
   }
 }
 
@@ -424,12 +403,9 @@ const authChecked = ref<string[]>([])
 const operateChecked = ref<string[]>([])
 
 const isSelfApply = (row: any) => {
-  const currentId = getCurrentUserId()
-  if (currentId && Number(row.arrOperId) === currentId) return true
-  const currentCode = getCurrentUserCode()
-  if (currentCode && row.arrOperCode && row.arrOperCode === currentCode) return true
-  const currentName = getCurrentUserName()
-  return !!currentName && row.arrOperName === currentName
+  const currentCode = String(getCurrentUserCode()).trim().toLowerCase()
+  const applyCode = String(row.arrOperCode ?? '').trim().toLowerCase()
+  return !!currentCode && !!applyCode && applyCode === currentCode
 }
 
 const isPending = (row: any) => {
@@ -441,9 +417,7 @@ const isPending = (row: any) => {
 const canRevoke = (row: any) => isPending(row) && isSelfApply(row)
 const canReview = (row: any) =>
   isPending(row) &&
-  !isSelfApply(row) &&
-  row.deptName === getCurrentDeptName() &&
-  row.opType !== '3'
+  !isSelfApply(row)
 
 const openReviewDialog = (row: any) => {
   if (!canReview(row)) {
@@ -451,8 +425,6 @@ const openReviewDialog = (row: any) => {
       ElMessage.error('仅能对待复核状态数据进行复核操作，请重新选择记录进行复核操作。')
     } else if (isSelfApply(row)) {
       ElMessage.error('不能复核自己提交的申请记录。')
-    } else if (row.deptName !== getCurrentDeptName()) {
-      ElMessage.error('请由本部门其他人员进行复核。')
     }
     return
   }
@@ -740,4 +712,5 @@ onMounted(() => {
 }
 
 </style>
+
 

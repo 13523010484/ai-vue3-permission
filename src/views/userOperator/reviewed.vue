@@ -192,7 +192,7 @@ const statusOptions = [{ value: '2', label: '复核通过' }]
 
 const userTypeLabel = (value: string) => {
   const hit = userTypeOptions.find((item) => item.value === value)
-  return hit ? hit.label : value || '-'
+  return hit ? hit.label : value || ''
 }
 
 const list = ref<any[]>([])
@@ -264,12 +264,12 @@ const opTypeCodeMap: Record<string, string> = {
 }
 
 const formatDateTime = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return value.replace('T', ' ').replaceAll('-', '/')
 }
 
 const formatDate = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return formatDateTime(value).split(' ')[0]
 }
 
@@ -280,27 +280,27 @@ const normalizeApply = (item: any) => {
   const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
   return {
     id: item.id,
-    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrNo: item.applyNo ?? item.arrNo ?? '',
     arrDate: formatDate(item.applyTime ?? item.arrDate),
     opType: opTypeCode,
-    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
-    deptName: item.deptName ?? '-',
-    operCode: item.username ?? item.operCode ?? '-',
-    operName: item.fullName ?? item.operName ?? '-',
-    telPhone: item.officePhone ?? item.telPhone ?? '-',
-    mobile: item.mobilePhone ?? item.mobile ?? '-',
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '',
+    deptName: item.deptName ?? '',
+    operCode: item.username ?? item.operCode ?? '',
+    operName: item.fullName ?? item.operName ?? '',
+    telPhone: item.officePhone ?? item.telPhone ?? '',
+    mobile: item.mobilePhone ?? item.mobile ?? '',
     userType: item.userType ?? '3',
     userTypeLabel: '部门操作员',
-    userStatus: item.userStatus ?? item.status ?? '-',
-    operStatus: item.operStatus ?? '-',
-    remark: item.remark ?? '-',
-    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    userStatus: item.userStatus ?? item.status ?? '',
+    operStatus: item.operStatus ?? '',
+    remark: item.remark ?? '',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '',
     applyTime: formatDateTime(item.applyTime),
-    reviewOperName: item.reviewOperName ?? '-',
+    reviewOperName: item.reviewOperName ?? '',
     reviewTime: formatDateTime(item.reviewTime),
     revokeTime: formatDateTime(item.revokeTime),
     status: statusCode,
-    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '',
   }
 }
 
@@ -597,3 +597,4 @@ onMounted(() => {
 }
 
 </style>
+

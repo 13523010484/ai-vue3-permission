@@ -65,7 +65,7 @@
               <el-tooltip v-if="row.remark && row.remark.length > 10" :content="row.remark">
                 <span>{{ truncateText(row.remark, 10) }}</span>
               </el-tooltip>
-              <span v-else>{{ row.remark || '-' }}</span>
+              <span v-else>{{ row.remark || '' }}</span>
             </template>
           </el-table-column>
           <el-table-column class-name="action-col" prop="createdOperName" label="录入人" min-width="120" />
@@ -162,23 +162,23 @@ const statusCodeMap: Record<string, StatusValue> = {
 }
 
 const formatDateTime = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return value.replace('T', ' ').replaceAll('-', '/')
 }
 
 const normalizePosition = (item: any): PostRow => ({
   id: String(item.id ?? ''),
-  deptName: item.deptName ?? '-',
-  postName: item.name ?? item.postName ?? '-',
+  deptName: item.deptName ?? '',
+  postName: item.name ?? item.postName ?? '',
   postType: '1',
   status: statusCodeMap[item.status] ?? '1',
-  postStatus: statusLabelMap[item.status] ?? item.status ?? '-',
-  remark: item.remark ?? '-',
-  createdOperName: item.createdOperName ?? '-',
+  postStatus: statusLabelMap[item.status] ?? item.status ?? '',
+  remark: item.remark ?? '',
+  createdOperName: item.createdOperName ?? '',
   createdAt: formatDateTime(item.createdAt),
-  updatedOperName: item.updatedOperName ?? '-',
+  updatedOperName: item.updatedOperName ?? '',
   updatedAt: formatDateTime(item.updatedAt),
-  reviewOperName: item.reviewOperName ?? '-',
+  reviewOperName: item.reviewOperName ?? '',
   reviewTime: formatDateTime(item.reviewTime),
 })
 
@@ -234,7 +234,7 @@ const handleDownload = async () => {
 }
 
 const truncateText = (text: string, size: number) => {
-  if (!text) return '-'
+  if (!text) return ''
   return text.length > size ? `${text.slice(0, size)}…` : text
 }
 
@@ -276,10 +276,10 @@ const openUserDialog = async (row: PostRow) => {
     const items = Array.isArray(payload) ? payload : payload?.data
     postUsers.value =
       items?.map((user: any) => ({
-        operCode: user.username ?? '-',
-        operName: user.fullName ?? '-',
-        userType: user.userType ?? '-',
-        status: statusLabelMap[user.status] ?? user.status ?? '-',
+        operCode: user.username ?? '',
+        operName: user.fullName ?? '',
+        userType: user.userType ?? '',
+        status: statusLabelMap[user.status] ?? user.status ?? '',
       })) ?? []
   } catch {
     postUsers.value = []
@@ -525,4 +525,5 @@ onMounted(() => {
 }
 
 </style>
+
 

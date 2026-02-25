@@ -123,8 +123,8 @@
 <el-table-column prop="arrStatus" label="申请状态" min-width="120" />
           <el-table-column label="操作" width="1" fixed="right" class-name="action-col action-col--ops">
 <template #default="{ row }">
-              <el-button link size="small" type="primary" @click="openReviewDialog(row)">复核</el-button>
-              <el-button link size="small" type="danger" @click="handleRevoke(row)">撤销</el-button>
+              <el-button link size="small" type="primary" @click="openReviewDialog(row)" :disabled="!canReview(row)">复核</el-button>
+              <el-button link size="small" type="danger" @click="handleRevoke(row)" :disabled="!canRevoke(row)">撤销</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -295,26 +295,6 @@ const getCurrentUserCode = () => {
   }
 }
 
-const getCurrentUserId = () => {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    const user = raw ? JSON.parse(raw) : null
-    const id = Number(user?.id)
-    return Number.isFinite(id) ? id : undefined
-  } catch {
-    return undefined
-  }
-}
-
-const getCurrentDeptName = () => {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    const user = raw ? JSON.parse(raw) : null
-    return String(user?.deptName ?? '')
-  } catch {
-    return ''
-  }
-}
 const deptOptions = ['清算管理部']
 const list = ref<any[]>([])
 const loading = ref(false)
@@ -393,12 +373,12 @@ const opTypeCodeMap: Record<string, string> = {
 }
 
 const formatDateTime = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return value.replace('T', ' ').replaceAll('-', '/')
 }
 
 const formatDate = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return formatDateTime(value).split(' ')[0]
 }
 
@@ -409,29 +389,29 @@ const normalizeApply = (item: any) => {
   const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
   return {
     id: item.id,
-    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    arrNo: item.applyNo ?? item.arrNo ?? '',
     arrDate: formatDate(item.applyTime ?? item.arrDate),
     opType: opTypeCode,
-    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
-    deptName: item.deptName ?? '-',
-    operCode: item.username ?? item.operCode ?? '-',
-    operName: item.fullName ?? item.operName ?? '-',
-    telPhone: item.officePhone ?? item.telPhone ?? '-',
-    mobile: item.mobilePhone ?? item.mobile ?? '-',
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '',
+    deptName: item.deptName ?? '',
+    operCode: item.username ?? item.operCode ?? '',
+    operName: item.fullName ?? item.operName ?? '',
+    telPhone: item.officePhone ?? item.telPhone ?? '',
+    mobile: item.mobilePhone ?? item.mobile ?? '',
     userType: item.userType ?? '3',
     userTypeLabel: '部门操作员',
-    userStatus: item.userStatus ?? item.status ?? '-',
-    operStatus: item.operStatus ?? '-',
-    remark: item.remark ?? '-',
+    userStatus: item.userStatus ?? item.status ?? '',
+    operStatus: item.operStatus ?? '',
+    remark: item.remark ?? '',
     arrOperId: item.applicantId ?? item.arrOperId ?? item.operId ?? item.userId,
     arrOperCode: item.applicantCode ?? item.operCode ?? item.username ?? item.userCode ?? '',
-    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    arrOperName: item.applicantName ?? item.arrOperName ?? '',
     applyTime: formatDateTime(item.applyTime),
-    reviewOperName: item.reviewOperName ?? '-',
+    reviewOperName: item.reviewOperName ?? '',
     reviewTime: formatDateTime(item.reviewTime),
     revokeTime: formatDateTime(item.revokeTime),
     status: statusCode,
-    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '',
   }
 }
 
@@ -602,14 +582,10 @@ const operateTreeRef = ref()
 const operateTree = ref<any[]>([])
 const operateChecked = ref<string[]>([])
 
-const reviewableOpTypes = ['1', '2', '7', '8']
 const isSelfApply = (row: any) => {
-  const currentId = getCurrentUserId()
-  if (currentId && Number(row.arrOperId) === currentId) return true
-  const currentCode = getCurrentUserCode()
-  if (currentCode && row.arrOperCode && row.arrOperCode === currentCode) return true
-  const currentName = getCurrentUserName()
-  return !!currentName && row.arrOperName === currentName
+  const currentCode = String(getCurrentUserCode()).trim().toLowerCase()
+  const applyCode = String(row.arrOperCode ?? '').trim().toLowerCase()
+  return !!currentCode && !!applyCode && applyCode === currentCode
 }
 
 const isPending = (row: any) => {
@@ -621,9 +597,7 @@ const isPending = (row: any) => {
 const canRevoke = (row: any) => isPending(row) && isSelfApply(row)
 const canReview = (row: any) =>
   isPending(row) &&
-  !isSelfApply(row) &&
-  row.deptName === getCurrentDeptName() &&
-  reviewableOpTypes.includes(row.opType)
+  !isSelfApply(row)
 
 const openReviewDialog = (row: any) => {
   if (!canReview(row)) {
@@ -631,10 +605,6 @@ const openReviewDialog = (row: any) => {
       ElMessage.error('仅能对待复核状态数据进行复核操作，请重新选择记录进行复核操作。')
     } else if (isSelfApply(row)) {
       ElMessage.error('不能复核自己提交的申请记录。')
-    } else if (row.deptName !== getCurrentDeptName()) {
-      ElMessage.error('请由本部门其他人员进行复核。')
-    } else if (!reviewableOpTypes.includes(row.opType)) {
-      ElMessage.error('该操作类型不支持录入复核。')
     }
     return
   }
@@ -739,7 +709,7 @@ const loadPosts = async () => {
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     postOptions.value =
-      items?.map((item: any) => ({ id: String(item.id), name: item.name ?? '-' })) ?? []
+      items?.map((item: any) => ({ id: String(item.id), name: item.name ?? '' })) ?? []
   } catch {
     postOptions.value = []
   }
@@ -937,3 +907,4 @@ onMounted(() => {
 }
 
 </style>
+

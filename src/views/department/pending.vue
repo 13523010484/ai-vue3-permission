@@ -187,46 +187,36 @@ const statusOptions = [
   { value: '4', label: '已撤销' },
 ]
 
-const getCurrentUserName = () => {
+const getCurrentUser = () => {
   try {
     const raw = localStorage.getItem('userInfo')
     const user = raw ? JSON.parse(raw) : null
-    return String(user?.name ?? user?.username ?? user?.operName ?? user?.operCode ?? '')
+    return {
+      id: Number(user?.id),
+      codes: [
+        user?.operCode,
+        user?.username,
+        user?.userCode,
+      ]
+        .map((v: any) => String(v ?? '').trim())
+        .filter(Boolean),
+      names: [
+        user?.name,
+        user?.fullName,
+        user?.realName,
+        user?.operName,
+        user?.username,
+      ]
+        .map((v: any) => String(v ?? '').trim())
+        .filter(Boolean),
+    }
   } catch {
-    return ''
+    return { id: NaN, codes: [] as string[], names: [] as string[] }
   }
 }
 
-const getCurrentUserCode = () => {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    const user = raw ? JSON.parse(raw) : null
-    return String(user?.operCode ?? user?.username ?? '')
-  } catch {
-    return ''
-  }
-}
-
-const getCurrentUserId = () => {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    const user = raw ? JSON.parse(raw) : null
-    const id = Number(user?.id)
-    return Number.isFinite(id) ? id : undefined
-  } catch {
-    return undefined
-  }
-}
-
-const getCurrentDeptName = () => {
-  try {
-    const raw = localStorage.getItem('userInfo')
-    const user = raw ? JSON.parse(raw) : null
-    return String(user?.deptName ?? '')
-  } catch {
-    return ''
-  }
-}
+const getCurrentUserName = () => getCurrentUser().names[0] ?? ''
+const getCurrentUserCode = () => getCurrentUser().codes[0] ?? ''
 
 const list = ref<any[]>([])
 const loading = ref(false)
@@ -293,12 +283,12 @@ const deptStatusLabelMap: Record<string, string> = {
 }
 
 const formatDateTime = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return value.replace('T', ' ').replaceAll('-', '/')
 }
 
 const formatDate = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return formatDateTime(value).split(' ')[0]
 }
 
@@ -309,36 +299,49 @@ const normalizeApply = (item: any) => {
   const opTypeCode = opTypeCodeMap[rawOpType] ?? rawOpType ?? ''
   return {
     id: item.id,
-    arrNo: item.applyNo ?? item.arrNo ?? '-',
+    userId: item.userId ?? item.applicantId ?? item.arrOperId ?? item.operId ?? item.createdById,
+    arrNo: item.applyNo ?? item.arrNo ?? '',
     arrDate: formatDate(item.applyTime ?? item.arrDate),
     opType: opTypeCode,
-    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '-',
-    deptName: item.deptName ?? item.name ?? '-',
+    operType: opTypeLabelMap[rawOpType] ?? rawOpType ?? '',
+    deptName: item.deptName ?? item.name ?? '',
     deptStatus:
       deptStatusLabelMap[item.deptStatus as string] ??
       deptStatusLabelMap[item.status as string] ??
       item.deptStatus ??
       '-',
-    remark: item.remark ?? item.deptRemark ?? '-',
-    arrOperId: item.applicantId ?? item.arrOperId ?? item.operId ?? item.userId,
-    arrOperCode: item.applicantCode ?? item.operCode ?? item.username ?? item.userCode ?? '',
-    arrOperName: item.applicantName ?? item.arrOperName ?? '-',
+    remark: item.remark ?? item.deptRemark ?? '',
+    arrOperId:
+      item.applicantId ?? item.arrOperId ?? item.operId ?? item.userId ?? item.createdById,
+    arrOperCode:
+      item.applicantCode ??
+      item.applicantUsername ??
+      item.operCode ??
+      item.username ??
+      item.userCode ??
+      item.createdBy ??
+      '',
+    arrOperName:
+      item.applicantName ??
+      item.arrOperName ??
+      item.operName ??
+      item.fullName ??
+      item.username ??
+      item.createdOperName ??
+      '-',
     applyTime: formatDateTime(item.applyTime ?? item.applyTime),
-    reviewOperName: item.reviewOperName ?? '-',
+    reviewOperName: item.reviewOperName ?? '',
     reviewTime: formatDateTime(item.reviewTime),
     revokeTime: formatDateTime(item.revokeTime),
     status: statusCode,
-    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
+    arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '',
   }
 }
 
 const isSelfApply = (row: any) => {
-  const currentId = getCurrentUserId()
-  if (currentId && Number(row.arrOperId) === currentId) return true
-  const currentCode = getCurrentUserCode()
-  if (currentCode && row.arrOperCode && row.arrOperCode === currentCode) return true
-  const currentName = getCurrentUserName()
-  return !!currentName && row.arrOperName === currentName
+  const currentCode = String(getCurrentUserCode()).trim().toLowerCase()
+  const applyCode = String(row.arrOperCode ?? '').trim().toLowerCase()
+  return !!currentCode && !!applyCode && currentCode === applyCode
 }
 
 const buildQueryParams = () => {
@@ -472,11 +475,9 @@ const isPending = (row: any) => {
   return label.includes('待复核')
 }
 const canRevoke = (row: any) => isPending(row) && isSelfApply(row)
-const canReview = (row: any) =>
-  isPending(row) &&
-  !isSelfApply(row) &&
-  row.deptName === getCurrentDeptName() &&
-  row.opType !== '3'
+const canReview = (row: any) => {
+  return isPending(row) && !isSelfApply(row)
+}
 
 const openReviewDialog = (row: any) => {
   if (!canReview(row)) {
@@ -484,8 +485,6 @@ const openReviewDialog = (row: any) => {
       ElMessage.error('仅能对待复核状态数据进行复核操作，请重新选择记录进行复核操作。')
     } else if (isSelfApply(row)) {
       ElMessage.error('不能复核自己提交的申请记录。')
-    } else if (row.deptName !== getCurrentDeptName()) {
-      ElMessage.error('请由本部门其他人员进行复核。')
     }
     return
   }
@@ -768,3 +767,4 @@ onMounted(() => {
   background: var(--app-table-header);
 }
 </style>
+

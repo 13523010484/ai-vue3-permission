@@ -86,7 +86,7 @@
               <el-tooltip v-if="row.remark && row.remark.length > 10" :content="row.remark">
                 <span>{{ truncateText(row.remark, 10) }}</span>
               </el-tooltip>
-              <span v-else>{{ row.remark || '-' }}</span>
+              <span v-else>{{ row.remark || '' }}</span>
             </template>
           </el-table-column>
           <el-table-column class-name="action-col" prop="createdBy" label="录入人" min-width="120" />
@@ -335,7 +335,7 @@ const statusLabelMap: Record<string, string> = {
 }
 
 const formatDateTime = (value?: string) => {
-  if (!value) return '-'
+  if (!value) return ''
   return value.replace('T', ' ').replaceAll('-', '/')
 }
 
@@ -395,19 +395,19 @@ const normalizeOperator = (item: any): UserRow => {
   const status = statusCodeMap[rawStatus] ?? '1'
   return {
     id: String(item.id ?? ''),
-    deptName: item.deptName ?? '-',
-    username: item.username ?? '-',
-    realName: item.fullName ?? item.realName ?? '-',
-    officePhone: item.officePhone ?? '-',
-    mobile: item.mobilePhone ?? item.mobile ?? '-',
+    deptName: item.deptName ?? '',
+    username: item.username ?? '',
+    realName: item.fullName ?? item.realName ?? '',
+    officePhone: item.officePhone ?? '',
+    mobile: item.mobilePhone ?? item.mobile ?? '',
     status,
-    statusLabel: statusLabelMap[rawStatus] ?? statusLabelMap[status] ?? '-',
-    remark: item.remark ?? '-',
-    createdBy: item.createdOperName ?? '-',
+    statusLabel: statusLabelMap[rawStatus] ?? statusLabelMap[status] ?? '',
+    remark: item.remark ?? '',
+    createdBy: item.createdOperName ?? '',
     createdAt: formatDateTime(item.createdAt),
-    updatedBy: item.updatedOperName ?? '-',
+    updatedBy: item.updatedOperName ?? '',
     updatedAt: formatDateTime(item.updatedAt),
-    reviewedBy: item.reviewOperName ?? '-',
+    reviewedBy: item.reviewOperName ?? '',
     reviewedAt: formatDateTime(item.reviewTime),
     isSelf: false,
   }
@@ -450,7 +450,7 @@ const handleDownload = async () => {
 }
 
 const truncateText = (text: string, size: number) => {
-  if (!text) return '-'
+  if (!text) return ''
   return text.length > size ? `${text.slice(0, size)}…` : text
 }
 
@@ -512,7 +512,7 @@ const loadPosts = async () => {
     const response = await postStore.fetchList({ deptId: getDeptId() })
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
-    postOptions.value = (items ?? []).map((item: any) => ({ id: String(item.id), name: item.name ?? '-' }))
+    postOptions.value = (items ?? []).map((item: any) => ({ id: String(item.id), name: item.name ?? '' }))
   } catch {
     postOptions.value = []
   }
@@ -733,8 +733,8 @@ const openBindDialog = async (row: UserRow) => {
     const items = Array.isArray(payload) ? payload : payload?.data
     bindTable.value = (items ?? []).map((item: any) => ({
       certId: Number(item.certId ?? 0),
-      certNo: item.certNo ?? '-',
-      certName: item.certName ?? '-',
+      certNo: item.certNo ?? '',
+      certName: item.certName ?? '',
       selected: !!item.selected,
     }))
     selectedCertIds.value = bindTable.value.filter((item) => item.selected).map((item) => item.certId)
@@ -753,8 +753,8 @@ const handleBindQuery = async () => {
     bindTable.value = (items ?? [])
       .map((item: any) => ({
         certId: Number(item.certId ?? 0),
-        certNo: item.certNo ?? '-',
-        certName: item.certName ?? '-',
+        certNo: item.certNo ?? '',
+        certName: item.certName ?? '',
         selected: !!item.selected,
       }))
       .filter((item: CertOption) => !keyword || item.certNo.includes(keyword) || item.certName.includes(keyword))
@@ -1001,3 +1001,4 @@ onMounted(() => {
   background: var(--app-table-header);
 }
 </style>
+
