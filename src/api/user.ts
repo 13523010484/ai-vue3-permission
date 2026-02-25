@@ -95,3 +95,24 @@ export function assignUserToDepartment(userId: string, departmentId: string): Ax
     method: 'post'
   })
 }
+
+/**
+ * 用户登录
+ */
+export function login(data: { operCode: string; password: string }): AxiosPromise<any> {
+  return request({
+    url: '/auth/login',
+    method: 'post',
+    data
+  })
+}
+
+/**
+ * 用户退出登录
+ */
+export function logout(): AxiosPromise<any> {
+  return request({
+    url: '/auth/logout',
+    method: 'post'
+  })
+}

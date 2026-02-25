@@ -10,8 +10,17 @@
       <div class="top-nav"></div>
       <div class="user-area">
         <span class="hello">Hi~ ai, 下午好!</span>
-        <div class="avatar">G</div>
-        <span class="user-name">ai</span>
+        <el-dropdown trigger="hover" @command="handleUserCommand">
+          <div class="user-trigger">
+            <div class="avatar">G</div>
+            <span class="user-name">ai</span>
+          </div>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </header>
 
@@ -53,11 +62,14 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import SideMenu from './components/SideMenu.vue'
 import { findMenuPath, getTabItems } from './menu'
+import { useAuthStore } from '@/stores/login'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const isCollapsed = ref(false)
 const tabsRef = ref<HTMLElement | null>(null)
 
@@ -124,6 +136,19 @@ const crumbs = computed(() => {
   if (!trail) return []
   return trail.map((item) => item.label)
 })
+
+const handleUserCommand = async (command: string | number | object) => {
+  if (command !== 'logout') return
+  try {
+    await authStore.logout()
+  } catch (error) {
+    ElMessage.error('退出登录失败')
+    return
+  }
+  sessionStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+  router.push('/login')
+}
 </script>
 
 <style scoped lang="scss">
@@ -195,6 +220,13 @@ const crumbs = computed(() => {
   gap: 10px;
   color: #7a6b56;
   font-size: 14px;
+}
+
+.user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
 }
 
 .avatar {

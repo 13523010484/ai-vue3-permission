@@ -1,7 +1,8 @@
 ﻿import { defineStore } from 'pinia'
 import type {
   DeptListQuery,
-  DeptApplicationPayload,
+  DeptCreatePayload,
+  DeptApplyQuery,
   AuthTreeNode,
   OperateTreeNode,
   DeptRow,
@@ -12,9 +13,12 @@ import {
   modifyDepartment,
   cancelDepartment,
   getDeptUsers,
-  getAuthTree,
-  getOperateTree,
+  getDepartmentApplications,
+  exportDepartmentApplications,
+  reviewDepartmentApplication,
+  revokeDepartmentApplication,
 } from '@/api/department'
+import { getMenuTree } from '@/api/menu'
 
 type CreateApplicationInput = {
   deptName: string
@@ -70,11 +74,40 @@ export const useDepartmentStore = defineStore('department', {
     },
     async fetchTrees() {
       try {
-        const [authRes, operateRes]: any = await Promise.all([getAuthTree(), getOperateTree()])
-        const authData = authRes?.data ?? authRes
-        const operateData = operateRes?.data ?? operateRes
-        this.authTree = Array.isArray(authData) ? authData : []
-        this.operateTree = Array.isArray(operateData) ? operateData : []
+        const res: any = await getMenuTree()
+        const payload = res?.data ?? res
+        const raw = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : []
+        const toTree = (items: any[]): AuthTreeNode[] =>
+          (items ?? []).map((item) => {
+            const id = String(
+              item.id ??
+                item.menuId ??
+                item.code ??
+                item.key ??
+                item.name ??
+                item.title ??
+                item.menuName ??
+                '',
+            )
+            const label = String(
+              item.label ??
+                item.name ??
+                item.title ??
+                item.menuName ??
+                item.menuTitle ??
+                id,
+            )
+            const childrenSource =
+              item.children ?? item.childList ?? item.subMenus ?? item.submenu ?? []
+            return {
+              id,
+              label,
+              children: toTree(Array.isArray(childrenSource) ? childrenSource : []),
+            }
+          })
+        const tree = toTree(raw)
+        this.authTree = tree
+        this.operateTree = tree
       } catch (e) {
         this.authTree = []
         this.operateTree = []
@@ -83,54 +116,32 @@ export const useDepartmentStore = defineStore('department', {
     async fetchDeptUsers(id: string | number) {
       return getDeptUsers(id)
     },
+    async fetchApplications(params?: DeptApplyQuery) {
+      return getDepartmentApplications(params)
+    },
+    async exportApplications(params?: DeptApplyQuery) {
+      return exportDepartmentApplications(params)
+    },
+    async reviewApplication(id: string | number, data: any) {
+      return reviewDepartmentApplication(id, data)
+    },
+    async revokeApplication(id: string | number, params?: any) {
+      return revokeDepartmentApplication(id, params)
+    },
     async createApplication(input: CreateApplicationInput) {
-      const buildScopeMap = (nodes: (AuthTreeNode | OperateTreeNode)[]) => {
-        const map = new Map<string, string>()
-        const walk = (list: (AuthTreeNode | OperateTreeNode)[]) => {
-          list.forEach((node) => {
-            map.set(node.id, node.label)
-            if (node.children && node.children.length) walk(node.children)
-          })
-        }
-        walk(nodes)
-        return map
-      }
+      const toBtnList = (keys: string[]) =>
+        keys
+          .map((key) => Number(key))
+          .filter((val) => Number.isFinite(val))
+          .map((val) => ({ btnId: val }))
 
-      const authMap = buildScopeMap(this.authTree)
-      const operateMap = buildScopeMap(this.operateTree)
-
-      const toScopeList = (keys: string[], map: Map<string, string>) =>
-        keys.map((key) => ({ scopeCode: key, scopeName: map.get(key) || key }))
-
-      const getApplicantInfo = () => {
-        try {
-          const raw = localStorage.getItem('userInfo')
-          const user = raw ? JSON.parse(raw) : null
-          return {
-            applicantId: Number(user?.id ?? 1),
-            applicantName: String(user?.name ?? user?.username ?? 'admin'),
-            applicantDeptId: Number(user?.deptId ?? 1),
-            applicantDeptName: String(user?.deptName ?? '默认部门'),
-          }
-        } catch {
-          return {
-            applicantId: 1,
-            applicantName: 'admin',
-            applicantDeptId: 1,
-            applicantDeptName: '默认部门',
-          }
-        }
-      }
-
-      const applicant = getApplicantInfo()
-      const payload: DeptApplicationPayload = {
-        name: input.deptName,
+      const payload: DeptCreatePayload = {
+        deptName: input.deptName,
         remark: input.remark,
-        authScopes: toScopeList(input.authKeys, authMap),
-        operScopes: toScopeList(input.operateKeys, operateMap),
-        externalScopes: [],
-        ...applicant,
+        assignAuth: toBtnList(input.authKeys),
+        operAuth: toBtnList(input.operateKeys),
       }
+
       return createDepartment(payload)
     },
     async updateDept(id: string | number, payload: any) {

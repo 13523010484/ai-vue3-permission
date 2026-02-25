@@ -111,14 +111,8 @@ import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import PostDialog from './components/PostDialog.vue'
 import PostUserDialog from './components/PostUserDialog.vue'
-import {
-  cancelPosition,
-  createPosition,
-  exportPositions,
-  getPositionList,
-  getPositionUsers,
-  modifyPosition,
-} from '@/api/post'
+import { usePostStore } from '@/stores/post'
+import { downloadBlob } from '@/utils/download'
 
 type StatusValue = '1' | '2' | ''
 
@@ -151,6 +145,7 @@ const queryForm = ref({
 const list = ref<PostRow[]>([])
 const loading = ref(false)
 const now = new Date().toISOString().replace('T', ' ').slice(0, 19).replaceAll('-', '/')
+const store = usePostStore()
 
 const statusLabelMap: Record<string, string> = {
   NORMAL: '正常',
@@ -205,7 +200,7 @@ const buildQueryParams = () => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const response = await getPositionList(buildQueryParams())
+    const response = await store.fetchList(buildQueryParams())
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     list.value = (items ?? []).map(normalizePosition)
@@ -228,21 +223,11 @@ const handleReset = () => {
   fetchList()
 }
 
-const downloadBlob = (data: Blob, filename: string) => {
-  const url = URL.createObjectURL(data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 const handleDownload = async () => {
   try {
-    const response = await exportPositions(buildQueryParams())
+    const response = await store.exportList(buildQueryParams())
     const payload = response?.data ?? response
-    const blob = payload instanceof Blob ? payload : new Blob([payload])
-    downloadBlob(blob, `岗位查询_${new Date().getTime()}.xlsx`)
+    downloadBlob(payload, `岗位查询_${new Date().getTime()}.xlsx`)
   } catch (error) {
     ElMessage.error('下载失败')
   }
@@ -286,7 +271,7 @@ const userVisible = ref(false)
 const openUserDialog = async (row: PostRow) => {
   userVisible.value = true
   try {
-    const response = await getPositionUsers(row.id)
+    const response = await store.fetchUsers(row.id)
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     postUsers.value =
@@ -363,11 +348,11 @@ const handleSaveEdit = async (payload: SavePayload) => {
 
   try {
     if (dialogMode.value === 'add') {
-      await createPosition(basePayload)
+      await store.create(basePayload)
     } else {
       const target = list.value.find((item) => item.postName === editForm.value.postName)
       if (target) {
-        await modifyPosition(target.id, basePayload)
+        await store.update(target.id, basePayload)
       }
     }
     ElMessage.success('操作成功')
@@ -383,7 +368,8 @@ const handleLogout = (row: PostRow) => {
     ElMessage.error('该岗位状态已是注销状态不能进行注销操作')
     return
   }
-  cancelPosition(row.id)
+  store
+    .cancel(row.id)
     .then(() => {
       row.status = '2'
       row.postStatus = '注销'

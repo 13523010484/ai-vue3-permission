@@ -69,8 +69,8 @@
     </div>
 
     <template #footer>
-      <el-button @click="emitClose">取消</el-button>
-      <el-button type="primary" :disabled="isDetail" @click="handleSave">保存</el-button>
+      <el-button @click="emitClose">{{ isDetail ? '关闭' : '取消' }}</el-button>
+      <el-button v-if="!isDetail" type="primary" @click="handleSave">保存</el-button>
     </template>
   </el-dialog>
 </template>

@@ -9,8 +9,8 @@
                 v-model="queryForm.startDate"
                 type="date"
                 placeholder="选择开始日期"
-                value-format="yyyy/MM/dd"
-                format="yyyy/MM/dd"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
                 style="width: 100%"
               />
             </el-form-item>
@@ -21,8 +21,8 @@
                 v-model="queryForm.endDate"
                 type="date"
                 placeholder="选择结束日期"
-                value-format="yyyy/MM/dd"
-                format="yyyy/MM/dd"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
                 style="width: 100%"
               />
             </el-form-item>
@@ -94,7 +94,7 @@
           <el-table-column prop="deptStatus" label="部门状态" min-width="120" />
           <el-table-column prop="remark" label="备注" min-width="200" />
           <el-table-column prop="arrOperName" label="申请人" min-width="120" />
-          <el-table-column prop="applyTime" label="申请时间" min-width="170" />
+          <el-table-column prop="arrDate" label="申请时间" min-width="170" />
           <el-table-column prop="reviewOperName" label="复核人" min-width="120" />
           <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
           <el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
@@ -152,19 +152,14 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { storeToRefs } from 'pinia'
 import DeptDialog from './components/DeptDialog.vue'
-import {
-  exportDepartmentApplications,
-  getAuthTree,
-  getDepartmentApplications,
-  getOperateTree,
-  reviewDepartmentApplication,
-  revokeDepartmentApplication,
-} from '@/api/department'
+import { useDepartmentStore } from '@/stores/department'
+import { downloadBlob } from '@/utils/download'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
-const todayStr = `${today.getFullYear()}/${pad(today.getMonth() + 1)}/${pad(today.getDate())}`
+const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
 
 type OpTypeValue = 'all' | '1' | '2' | '3'
 type StatusValue = 'all' | '1' | '3' | '4'
@@ -192,10 +187,52 @@ const statusOptions = [
   { value: '4', label: '已撤销' },
 ]
 
-const currentUser = 'superadmin'
+const getCurrentUserName = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.name ?? user?.username ?? user?.operName ?? user?.operCode ?? '')
+  } catch {
+    return ''
+  }
+}
+
+const getCurrentUserCode = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.operCode ?? user?.username ?? '')
+  } catch {
+    return ''
+  }
+}
+
+const getCurrentUserId = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    const id = Number(user?.id)
+    return Number.isFinite(id) ? id : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const getCurrentDeptName = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.deptName ?? '')
+  } catch {
+    return ''
+  }
+}
 
 const list = ref<any[]>([])
 const loading = ref(false)
+
+const store = useDepartmentStore()
+const { authTree, operateTree } = storeToRefs(store)
 
 const statusLabelMap: Record<string, string> = {
   '1': '待复核',
@@ -283,6 +320,8 @@ const normalizeApply = (item: any) => {
       item.deptStatus ??
       '-',
     remark: item.remark ?? item.deptRemark ?? '-',
+    arrOperId: item.applicantId ?? item.arrOperId ?? item.operId ?? item.userId,
+    arrOperCode: item.applicantCode ?? item.operCode ?? item.username ?? item.userCode ?? '',
     arrOperName: item.applicantName ?? item.arrOperName ?? '-',
     applyTime: formatDateTime(item.applyTime ?? item.applyTime),
     reviewOperName: item.reviewOperName ?? '-',
@@ -291,6 +330,15 @@ const normalizeApply = (item: any) => {
     status: statusCode,
     arrStatus: statusLabelMap[rawStatus] ?? statusLabelMap[statusCode] ?? rawStatus ?? '-',
   }
+}
+
+const isSelfApply = (row: any) => {
+  const currentId = getCurrentUserId()
+  if (currentId && Number(row.arrOperId) === currentId) return true
+  const currentCode = getCurrentUserCode()
+  if (currentCode && row.arrOperCode && row.arrOperCode === currentCode) return true
+  const currentName = getCurrentUserName()
+  return !!currentName && row.arrOperName === currentName
 }
 
 const buildQueryParams = () => {
@@ -317,7 +365,7 @@ const buildQueryParams = () => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const response = await getDepartmentApplications(buildQueryParams())
+    const response = await store.fetchApplications(buildQueryParams())
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     list.value = (items ?? []).map(normalizeApply)
@@ -391,21 +439,11 @@ const handleReset = () => {
   fetchList()
 }
 
-const downloadBlob = (data: Blob, filename: string) => {
-  const url = URL.createObjectURL(data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 const handleDownload = async () => {
   try {
-    const response = await exportDepartmentApplications(buildQueryParams())
+    const response = await store.exportApplications(buildQueryParams())
     const payload = response?.data ?? response
-    const blob = payload instanceof Blob ? payload : new Blob([payload])
-    downloadBlob(blob, `部门申请_${todayStr.replaceAll('/', '')}.xlsx`)
+    downloadBlob(payload, `部门申请_${todayStr.replaceAll('/', '')}.xlsx`)
   } catch (error) {
     ElMessage.error('下载失败')
   }
@@ -424,17 +462,33 @@ const editRules = {
   deptName: [{ required: true, message: '请录入部门名称', trigger: 'blur' }],
 }
 
-const authTree = ref<any[]>([])
-const operateTree = ref<any[]>([])
 const authChecked = ref<string[]>([])
 const operateChecked = ref<string[]>([])
 
-const canRevoke = (row: any) => row.status === '1' && row.arrOperName === currentUser
+const isPending = (row: any) => {
+  const status = String(row.status ?? '')
+  if (['1', 'PENDING', 'WAIT_REVIEW', 'WAITING', 'APPLYING'].includes(status)) return true
+  const label = String(row.arrStatus ?? '')
+  return label.includes('待复核')
+}
+const canRevoke = (row: any) => isPending(row) && isSelfApply(row)
 const canReview = (row: any) =>
-  row.status === '1' && row.arrOperName !== currentUser && row.opType !== '3'
+  isPending(row) &&
+  !isSelfApply(row) &&
+  row.deptName === getCurrentDeptName() &&
+  row.opType !== '3'
 
 const openReviewDialog = (row: any) => {
-  if (!canReview(row)) return
+  if (!canReview(row)) {
+    if (!isPending(row)) {
+      ElMessage.error('仅能对待复核状态数据进行复核操作，请重新选择记录进行复核操作。')
+    } else if (isSelfApply(row)) {
+      ElMessage.error('不能复核自己提交的申请记录。')
+    } else if (row.deptName !== getCurrentDeptName()) {
+      ElMessage.error('请由本部门其他人员进行复核。')
+    }
+    return
+  }
   currentRow.value = row
   dialogMode.value = 'edit'
   editForm.value = { deptName: row.deptName, remark: row.remark }
@@ -455,17 +509,18 @@ const handleReviewSave = (
     dialogVisible.value = false
     return
   }
-  reviewDepartmentApplication(currentRow.value.id, {
-    approved: true,
-    reviewerName: currentUser,
-    reviewRemark: '',
-    name: payload.deptName,
-    deptRemark: payload.remark,
-  })
+  store
+    .reviewApplication(currentRow.value.id, {
+      approved: true,
+      reviewerName: getCurrentUserName(),
+      reviewRemark: '',
+      name: payload.deptName,
+      deptRemark: payload.remark,
+    })
     .then(() => {
       currentRow.value.status = '2'
       currentRow.value.arrStatus = '复核通过'
-      currentRow.value.reviewOperName = currentUser
+      currentRow.value.reviewOperName = getCurrentUserName()
       currentRow.value.reviewTime = todayStr + ' 10:30:00'
       ElMessage.success('操作成功')
     })
@@ -482,11 +537,12 @@ const handleRevoke = (row: any) => {
     ElMessage.error('申请记录状态不可进行撤销操作，请查证后重新操作')
     return
   }
-  if (row.arrOperName !== currentUser) {
+  if (!isSelfApply(row)) {
     ElMessage.error('操作用户仅能撤销本人提交的申请')
     return
   }
-  revokeDepartmentApplication(row.id)
+  store
+    .revokeApplication(row.id)
     .then(() => {
       row.status = '4'
       row.arrStatus = '已撤销'
@@ -498,23 +554,9 @@ const handleRevoke = (row: any) => {
     })
 }
 
-const loadTrees = async () => {
-  try {
-    const [authResponse, operateResponse] = await Promise.all([getAuthTree(), getOperateTree()])
-    const authPayload = authResponse?.data ?? authResponse
-    const operatePayload = operateResponse?.data ?? operateResponse
-    authTree.value = Array.isArray(authPayload?.data) ? authPayload.data : authPayload?.data ?? []
-    operateTree.value =
-      Array.isArray(operatePayload?.data) ? operatePayload.data : operatePayload?.data ?? []
-  } catch (error) {
-    authTree.value = []
-    operateTree.value = []
-  }
-}
-
 onMounted(() => {
   fetchList()
-  loadTrees()
+  store.fetchTrees()
 })
 </script>
 

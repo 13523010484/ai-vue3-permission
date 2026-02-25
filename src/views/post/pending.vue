@@ -86,7 +86,7 @@
 <el-table-column prop="postStatus" label="岗位状态" min-width="120" />
 <el-table-column prop="remark" label="备注" min-width="200" />
 <el-table-column prop="arrOperName" label="申请人" min-width="120" />
-<el-table-column prop="applyTime" label="申请时间" min-width="170" />
+<el-table-column prop="arrDate" label="申请时间" min-width="170" />
 <el-table-column prop="reviewOperName" label="复核人" min-width="120" />
 <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
 <el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
@@ -129,12 +129,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import PostDialog from './components/PostDialog.vue'
-import {
-  exportPositionApplications,
-  getPositionApplications,
-  reviewPositionApplication,
-  revokePositionApplication,
-} from '@/api/post'
+import { usePostStore } from '@/stores/post'
+import { downloadBlob } from '@/utils/download'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -166,10 +162,50 @@ const statusOptions = [
   { value: '4', label: '已撤销' },
 ]
 
-const currentUser = 'superadmin'
+const getCurrentUserName = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.name ?? user?.username ?? user?.operName ?? user?.operCode ?? '')
+  } catch {
+    return ''
+  }
+}
+
+const getCurrentUserCode = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.operCode ?? user?.username ?? '')
+  } catch {
+    return ''
+  }
+}
+
+const getCurrentUserId = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    const id = Number(user?.id)
+    return Number.isFinite(id) ? id : undefined
+  } catch {
+    return undefined
+  }
+}
+
+const getCurrentDeptName = () => {
+  try {
+    const raw = localStorage.getItem('userInfo')
+    const user = raw ? JSON.parse(raw) : null
+    return String(user?.deptName ?? '')
+  } catch {
+    return ''
+  }
+}
 
 const list = ref<any[]>([])
 const loading = ref(false)
+const store = usePostStore()
 
 const statusLabelMap: Record<string, string> = {
   '1': '待复核',
@@ -248,6 +284,8 @@ const normalizeApply = (item: any) => {
     postType: item.postType ?? '内部',
     postStatus: item.positionStatus ?? item.postStatus ?? '-',
     remark: item.remark ?? item.deptRemark ?? '-',
+    arrOperId: item.applicantId ?? item.arrOperId ?? item.operId ?? item.userId,
+    arrOperCode: item.applicantCode ?? item.operCode ?? item.username ?? item.userCode ?? '',
     arrOperName: item.applicantName ?? item.arrOperName ?? '-',
     applyTime: formatDateTime(item.applyTime ?? item.applyTime),
     reviewOperName: item.reviewOperName ?? '-',
@@ -282,7 +320,7 @@ const buildQueryParams = () => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const response = await getPositionApplications(buildQueryParams())
+    const response = await store.fetchApplications(buildQueryParams())
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     list.value = (items ?? []).map(normalizeApply)
@@ -355,21 +393,11 @@ const handleReset = () => {
   fetchList()
 }
 
-const downloadBlob = (data: Blob, filename: string) => {
-  const url = URL.createObjectURL(data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 const handleDownload = async () => {
   try {
-    const response = await exportPositionApplications(buildQueryParams())
+    const response = await store.exportApplications(buildQueryParams())
     const payload = response?.data ?? response
-    const blob = payload instanceof Blob ? payload : new Blob([payload])
-    downloadBlob(blob, `岗位申请_${todayStr.replaceAll('/', '')}.xlsx`)
+    downloadBlob(payload, `岗位申请_${todayStr.replaceAll('/', '')}.xlsx`)
   } catch (error) {
     ElMessage.error('下载失败')
   }
@@ -395,15 +423,36 @@ const operateTree = ref<any[]>([])
 const authChecked = ref<string[]>([])
 const operateChecked = ref<string[]>([])
 
-const canRevoke = (row: any) => row.status === '1' && row.arrOperName === currentUser
-const canReview = (row: any) => row.status === '1' && row.arrOperName !== currentUser && row.opType !== '3'
+const isSelfApply = (row: any) => {
+  const currentId = getCurrentUserId()
+  if (currentId && Number(row.arrOperId) === currentId) return true
+  const currentCode = getCurrentUserCode()
+  if (currentCode && row.arrOperCode && row.arrOperCode === currentCode) return true
+  const currentName = getCurrentUserName()
+  return !!currentName && row.arrOperName === currentName
+}
+
+const isPending = (row: any) => {
+  const status = String(row.status ?? '')
+  if (['1', 'PENDING', 'WAIT_REVIEW', 'WAITING', 'APPLYING'].includes(status)) return true
+  const label = String(row.arrStatus ?? '')
+  return label.includes('待复核')
+}
+const canRevoke = (row: any) => isPending(row) && isSelfApply(row)
+const canReview = (row: any) =>
+  isPending(row) &&
+  !isSelfApply(row) &&
+  row.deptName === getCurrentDeptName() &&
+  row.opType !== '3'
 
 const openReviewDialog = (row: any) => {
   if (!canReview(row)) {
-    if (row.status !== '1') {
+    if (!isPending(row)) {
       ElMessage.error('仅能对待复核状态数据进行复核操作，请重新选择记录进行复核操作。')
-    } else if (row.arrOperName === currentUser) {
+    } else if (isSelfApply(row)) {
       ElMessage.error('不能复核自己提交的申请记录。')
+    } else if (row.deptName !== getCurrentDeptName()) {
+      ElMessage.error('请由本部门其他人员进行复核。')
     }
     return
   }
@@ -431,15 +480,16 @@ const handleReviewSave = (payload: typeof editForm.value & { operateKeys: string
     return
   }
 
-  reviewPositionApplication(currentRow.value.id, {
+  store
+    .reviewApplication(currentRow.value.id, {
     approved: true,
-    reviewerName: currentUser,
+    reviewerName: getCurrentUserName(),
     reviewRemark: '',
   })
     .then(() => {
       currentRow.value.status = '2'
       currentRow.value.arrStatus = '复核通过'
-      currentRow.value.reviewOperName = currentUser
+      currentRow.value.reviewOperName = getCurrentUserName()
       currentRow.value.reviewTime = todayStr + ' 10:30:00'
       ElMessage.success('操作成功')
     })
@@ -453,14 +503,15 @@ const handleReviewSave = (payload: typeof editForm.value & { operateKeys: string
 
 const handleRevoke = (row: any) => {
   if (!canRevoke(row)) {
-    if (row.status !== '1') {
+    if (!isPending(row)) {
       ElMessage.error('申请记录状态不可进行撤销操作，请查证后重新操作。')
     } else {
       ElMessage.error('操作用户仅能撤销本人提交的申请。')
     }
     return
   }
-  revokePositionApplication(row.id)
+  store
+    .revokeApplication(row.id)
     .then(() => {
       row.status = '4'
       row.arrStatus = '已撤销'

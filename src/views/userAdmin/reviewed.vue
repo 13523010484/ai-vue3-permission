@@ -116,7 +116,7 @@
 <el-table-column prop="operStatus" label="用户状态" min-width="120" />
 <el-table-column prop="remark" label="备注" min-width="200" />
 <el-table-column prop="arrOperName" label="申请人" min-width="120" />
-<el-table-column prop="applyTime" label="申请时间" min-width="170" />
+<el-table-column prop="arrDate" label="申请时间" min-width="170" />
 <el-table-column prop="reviewOperName" label="复核人" min-width="120" />
 <el-table-column prop="reviewTime" label="复核时间" min-width="170" />
 <el-table-column prop="revokeTime" label="撤销时间" min-width="170" />
@@ -141,7 +141,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowUp } from '@element-plus/icons-vue'
-import { exportAdminApplications, getAdminApplications } from '@/api/userAdmin'
+import { useUserAdminStore } from '@/stores/userAdmin'
+import { downloadBlob } from '@/utils/download'
 
 const today = new Date()
 const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`)
@@ -189,6 +190,7 @@ const statusOptions = [{ value: '2', label: '复核通过' }]
 
 const list = ref<any[]>([])
 const loading = ref(false)
+const store = useUserAdminStore()
 
 const statusLabelMap: Record<string, string> = {
   '1': '待复核',
@@ -302,7 +304,7 @@ const buildQueryParams = () => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const response = await getAdminApplications(buildQueryParams())
+    const response = await store.fetchApplications(buildQueryParams())
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     list.value = (items ?? []).map(normalizeApply)
@@ -379,20 +381,11 @@ const handleReset = () => {
   fetchList()
 }
 
-const downloadBlob = (data: Blob, filename: string) => {
-  const url = URL.createObjectURL(data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
 const handleDownload = async () => {
   try {
-    const response = await exportAdminApplications(buildQueryParams())
+    const response = await store.exportApplications(buildQueryParams())
     const payload = response?.data ?? response
-    const blob = payload instanceof Blob ? payload : new Blob([payload])
-    downloadBlob(blob, `管理员申请_复核_${todayStr.replaceAll('/', '')}.xlsx`)
+    downloadBlob(payload, `管理员申请_复核_${todayStr.replaceAll('/', '')}.xlsx`)
   } catch {
     ElMessage.error('下载失败')
   }

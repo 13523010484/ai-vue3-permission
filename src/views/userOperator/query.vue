@@ -219,8 +219,8 @@
       </div>
 
       <template #footer>
-        <el-button @click="closeDialog">取消</el-button>
-        <el-button type="primary" :disabled="dialogMode === 'detail'" @click="handleSaveEdit"
+        <el-button @click="closeDialog">{{ dialogMode === 'detail' ? '关闭' : '取消' }}</el-button>
+        <el-button v-if="dialogMode !== 'detail'" type="primary" @click="handleSaveEdit"
           >保存</el-button
         >
         <el-button v-if="dialogMode === 'detail'" type="primary" @click="handleRefreshAuth"
@@ -262,22 +262,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import {
-  assignOperatorPermissions,
-  bindOperatorCert,
-  cancelOperator,
-  createOperator,
-  exportOperators,
-  freezeOperator,
-  getOperatorCertificates,
-  getOperatorDetail,
-  getOperatorList,
-  getOperatorPermissions,
-  modifyOperator,
-  resetOperatorPassword,
-  unfreezeOperator,
-} from '@/api/userOperator'
-import { getPositionList } from '@/api/post'
+import { useUserOperatorStore } from '@/stores/userOperator'
+import { usePostStore } from '@/stores/post'
+import { downloadBlob } from '@/utils/download'
 
 type StatusValue = '1' | '2' | '3' | '4' | ''
 
@@ -322,6 +309,8 @@ const queryForm = ref({
 
 const list = ref<UserRow[]>([])
 const loading = ref(false)
+const store = useUserOperatorStore()
+const postStore = usePostStore()
 
 const statusCodeMap: Record<string, StatusValue> = {
   NORMAL: '1',
@@ -427,7 +416,7 @@ const normalizeOperator = (item: any): UserRow => {
 const fetchList = async () => {
   loading.value = true
   try {
-    const response = await getOperatorList(buildQueryParams())
+    const response = await store.fetchList(buildQueryParams())
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     list.value = (items ?? []).map(normalizeOperator)
@@ -450,21 +439,11 @@ const handleReset = () => {
   fetchList()
 }
 
-const downloadBlob = (data: Blob, filename: string) => {
-  const url = URL.createObjectURL(data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
-
 const handleDownload = async () => {
   try {
-    const response = await exportOperators(buildQueryParams())
+    const response = await store.exportList(buildQueryParams())
     const payload = response?.data ?? response
-    const blob = payload instanceof Blob ? payload : new Blob([payload])
-    downloadBlob(blob, `操作员查询_${new Date().getTime()}.xlsx`)
+    downloadBlob(payload, `操作员查询_${new Date().getTime()}.xlsx`)
   } catch {
     ElMessage.error('下载失败')
   }
@@ -530,7 +509,7 @@ const deptOptions = computed(() => {
 
 const loadPosts = async () => {
   try {
-    const response = await getPositionList({ deptId: getDeptId() })
+    const response = await postStore.fetchList({ deptId: getDeptId() })
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     postOptions.value = (items ?? []).map((item: any) => ({ id: String(item.id), name: item.name ?? '-' }))
@@ -541,7 +520,7 @@ const loadPosts = async () => {
 
 const loadPermissions = async (id: string) => {
   try {
-    const response = await getOperatorPermissions(id, { deptId: getDeptId() })
+    const response = await store.fetchPermissions(id, { deptId: getDeptId() })
     const payload = response?.data ?? response
     const permissions = Array.isArray(payload) ? payload : payload?.operScopes ?? payload?.permissions ?? []
     const grouped = new Map<string, { id: string; label: string; children: any[] }>()
@@ -566,7 +545,7 @@ const loadPermissions = async (id: string) => {
 
 const fillEditByRow = async (row: UserRow) => {
   try {
-    const response = await getOperatorDetail(row.id, { deptId: getDeptId() })
+    const response = await store.fetchDetail(row.id, { deptId: getDeptId() })
     const payload = response?.data ?? response
     const data = payload?.data ?? payload
     editForm.value = {
@@ -656,14 +635,14 @@ const handleSaveEdit = async () => {
         ElMessage.error('请指定岗位')
         return
       }
-      await assignOperatorPermissions(currentRow.value.id, {
+      await store.assignPermissions(currentRow.value.id, {
         deptId,
         deptName: editForm.value.deptName,
         positionIds: selectedPosts.value.map((id) => Number(id)),
         ...applicant,
       })
     } else if (dialogMode.value === 'add') {
-      await createOperator({
+      await store.create({
         deptId,
         deptName: editForm.value.deptName,
         username: editForm.value.username,
@@ -675,7 +654,7 @@ const handleSaveEdit = async () => {
       })
     } else {
       if (!currentRow.value) return
-      await modifyOperator(currentRow.value.id, {
+      await store.update(currentRow.value.id, {
         deptId,
         deptName: editForm.value.deptName,
         fullName: editForm.value.realName,
@@ -721,22 +700,22 @@ const submitAction = async (
 
 const handleFreeze = (row: UserRow) => {
   if (!canFreeze(row)) return
-  submitAction(row, freezeOperator as any, '2', '冻结')
+  submitAction(row, store.freeze as any, '2', '冻结')
 }
 
 const handleUnfreeze = (row: UserRow) => {
   if (!canUnfreeze(row)) return
-  submitAction(row, unfreezeOperator as any, '1', '正常')
+  submitAction(row, store.unfreeze as any, '1', '正常')
 }
 
 const handleResetPwd = (row: UserRow) => {
   if (!canResetPwd(row)) return
-  submitAction(row, resetOperatorPassword as any, '4', '密码重置')
+  submitAction(row, store.resetPassword as any, '4', '密码重置')
 }
 
 const handleLogout = (row: UserRow) => {
   if (!canLogout(row)) return
-  submitAction(row, cancelOperator as any, '3', '注销')
+  submitAction(row, store.cancel as any, '3', '注销')
 }
 
 const bindVisible = ref(false)
@@ -749,7 +728,7 @@ const openBindDialog = async (row: UserRow) => {
   bindVisible.value = true
   selectedCertIds.value = []
   try {
-    const response = await getOperatorCertificates(row.id, { deptId: getDeptId() })
+    const response = await store.fetchCertificates(row.id, { deptId: getDeptId() })
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     bindTable.value = (items ?? []).map((item: any) => ({
@@ -767,7 +746,7 @@ const openBindDialog = async (row: UserRow) => {
 const handleBindQuery = async () => {
   if (!currentRow.value) return
   try {
-    const response = await getOperatorCertificates(currentRow.value.id, { deptId: getDeptId() })
+    const response = await store.fetchCertificates(currentRow.value.id, { deptId: getDeptId() })
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     const keyword = bindQuery.value.dn.trim()
@@ -794,7 +773,7 @@ const handleBindSave = async () => {
   const deptId = getDeptId()
   if (!deptId) return
   try {
-    await bindOperatorCert(currentRow.value.id, {
+    await store.bindCert(currentRow.value.id, {
       deptId,
       deptName: currentRow.value.deptName,
       certIds: selectedCertIds.value,

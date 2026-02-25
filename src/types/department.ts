@@ -47,6 +47,13 @@ export interface DeptApplicationPayload {
   applicantDeptName?: string
 }
 
+export interface DeptCreatePayload {
+  deptName: string
+  remark?: string
+  assignAuth: { btnId: number }[]
+  operAuth: { btnId: number }[]
+}
+
 export interface DeptApplyQuery {
   statusType?: string
   startDate?: string

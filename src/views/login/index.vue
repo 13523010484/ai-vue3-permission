@@ -1,8 +1,8 @@
-<template>
+﻿<template>
   <div class="login-container">
     <el-card class="login-wrap">
       <template #header>
-        <div class="card-header">登录</div>
+        <div class="card-header">鐧诲綍</div>
       </template>
 
       <el-form :model="loginForm" :rules="loginRules" ref="loginFormRef" label-width="auto">
@@ -34,6 +34,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/login'
 
 interface LoginForm {
   username: string
@@ -41,6 +42,7 @@ interface LoginForm {
 }
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const loginForm = ref<LoginForm>({
   username: '',
@@ -66,14 +68,38 @@ const handleLogin = async () => {
   try {
     await loginFormRef.value.validate()
     loading.value = true
-    setTimeout(() => {
-      loading.value = false
-      ElMessage.success('登录成功!')
-      router.push('/department/query')
-    }, 800)
+    const response = await authStore.login({
+      operCode: loginForm.value.username,
+      password: loginForm.value.password,
+    })
+    const payload = response?.data ?? response
+    if (payload && typeof payload.code !== 'undefined' && payload.code !== 0) {
+      ElMessage.error(payload.message || '登录失败')
+      return
+    }
+    const token =
+      payload?.token ??
+      payload?.accessToken ??
+      payload?.data?.token ??
+      payload?.data?.accessToken
+    if (token) {
+      sessionStorage.setItem('token', String(token))
+    }
+    const userInfo = payload?.user ?? payload?.userInfo ?? payload?.data?.user ?? payload?.data?.userInfo
+    if (userInfo) {
+      localStorage.setItem('userInfo', JSON.stringify(userInfo))
+    }
+    ElMessage.success('登录成功!')
+    router.push('/department/query')
   } catch (error) {
-    console.error('校验失败:', error)
-    ElMessage.error('请检查输入')
+    console.error('鏍￠獙澶辫触:', error)
+    const message =
+      (error as any)?.response?.data?.message ||
+      (error as any)?.message ||
+      '请检查输入'
+    ElMessage.error(message)
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -106,3 +132,5 @@ const handleLogin = async () => {
   font-size: 18px;
 }
 </style>
+
+

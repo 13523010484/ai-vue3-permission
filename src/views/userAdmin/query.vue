@@ -160,8 +160,8 @@
       </div>
 
       <template #footer>
-        <el-button @click="closeDialog">取消</el-button>
-        <el-button type="primary" :disabled="dialogMode === 'detail'" @click="handleSaveEdit">保存</el-button>
+        <el-button @click="closeDialog">{{ dialogMode === 'detail' ? '关闭' : '取消' }}</el-button>
+        <el-button v-if="dialogMode !== 'detail'" type="primary" @click="handleSaveEdit">保存</el-button>
         <el-button v-if="dialogMode === 'detail'" type="primary" @click="handleRefreshAuth">刷新权限</el-button>
       </template>
     </el-dialog>
@@ -195,20 +195,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import {
-  bindAdminCert,
-  cancelAdmin,
-  createAdmin,
-  exportAdmins,
-  freezeAdmin,
-  getAdminCertificates,
-  getAdminDetail,
-  getAdminList,
-  getAdminPermissions,
-  modifyAdmin,
-  resetAdminPassword,
-  unfreezeAdmin,
-} from '@/api/userAdmin'
+import { useUserAdminStore } from '@/stores/userAdmin'
+import { downloadBlob } from '@/utils/download'
 
 type StatusValue = '1' | '2' | '3' | '4' | ''
 type UserRow = {
@@ -243,6 +231,7 @@ const list = ref<UserRow[]>([])
 const dialogVisible = ref(false)
 const dialogMode = ref<'add' | 'edit' | 'detail'>('add')
 const currentRow = ref<UserRow | null>(null)
+const store = useUserAdminStore()
 
 const statusCodeMap: Record<string, StatusValue> = {
   NORMAL: '1',
@@ -336,7 +325,7 @@ const buildQueryParams = () => {
 }
 const fetchList = async () => {
   try {
-    const response = await getAdminList(buildQueryParams())
+    const response = await store.fetchList(buildQueryParams())
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     list.value = (items ?? []).map(normalizeAdmin)
@@ -352,20 +341,11 @@ const handleReset = () => {
   queryForm.value = { operCode: '', operName: '', operStatus: '' }
   fetchList()
 }
-const downloadBlob = (data: Blob, filename: string) => {
-  const url = URL.createObjectURL(data)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
-}
 const handleDownload = async () => {
   try {
-    const response = await exportAdmins(buildQueryParams())
+    const response = await store.exportList(buildQueryParams())
     const payload = response?.data ?? response
-    const blob = payload instanceof Blob ? payload : new Blob([payload])
-    downloadBlob(blob, `管理员查询_${new Date().getTime()}.xlsx`)
+    downloadBlob(payload, `管理员查询_${new Date().getTime()}.xlsx`)
   } catch {
     ElMessage.error('下载失败')
   }
@@ -419,7 +399,7 @@ const toTree = (scopes: any[], rootId: string, rootLabel: string) => {
 }
 const loadPermissions = async (id: string) => {
   try {
-    const response = await getAdminPermissions(id, { deptId: getDeptId() })
+    const response = await store.fetchPermissions(id, { deptId: getDeptId() })
     const payload = response?.data ?? response
     const data = payload?.data ?? payload
     authTree.value = toTree(data?.authScopes ?? [], 'AUTH', '授权范围')
@@ -439,7 +419,7 @@ const loadPermissions = async (id: string) => {
 }
 const fillEditByRow = async (row: UserRow) => {
   try {
-    const response = await getAdminDetail(row.id, { deptId: getDeptId() })
+    const response = await store.fetchDetail(row.id, { deptId: getDeptId() })
     const payload = response?.data ?? response
     const data = payload?.data ?? payload
     editForm.value = {
@@ -499,7 +479,7 @@ const handleSaveEdit = async () => {
     if (!deptId) return
     const applicant = getApplicantInfo()
     if (dialogMode.value === 'add') {
-      await createAdmin({
+      await store.create({
         deptId,
         deptName: editForm.value.deptName,
         username: editForm.value.operCode,
@@ -511,7 +491,7 @@ const handleSaveEdit = async () => {
       })
     } else {
       if (!currentRow.value) return
-      await modifyAdmin(currentRow.value.id, {
+      await store.update(currentRow.value.id, {
         deptId,
         deptName: editForm.value.deptName,
         fullName: editForm.value.operName,
@@ -540,10 +520,10 @@ const submitAction = async (row: UserRow, action: (id: string, data: any) => Pro
     ElMessage.error('操作失败')
   }
 }
-const handleFreeze = (row: UserRow) => canFreeze(row) && submitAction(row, freezeAdmin as any, '2', '冻结')
-const handleUnfreeze = (row: UserRow) => canUnfreeze(row) && submitAction(row, unfreezeAdmin as any, '1', '正常')
-const handleResetPwd = (row: UserRow) => canResetPwd(row) && submitAction(row, resetAdminPassword as any, '4', '密码重置')
-const handleLogout = (row: UserRow) => canLogout(row) && submitAction(row, cancelAdmin as any, '3', '注销')
+const handleFreeze = (row: UserRow) => canFreeze(row) && submitAction(row, store.freeze as any, '2', '冻结')
+const handleUnfreeze = (row: UserRow) => canUnfreeze(row) && submitAction(row, store.unfreeze as any, '1', '正常')
+const handleResetPwd = (row: UserRow) => canResetPwd(row) && submitAction(row, store.resetPassword as any, '4', '密码重置')
+const handleLogout = (row: UserRow) => canLogout(row) && submitAction(row, store.cancel as any, '3', '注销')
 
 const bindVisible = ref(false)
 const bindQuery = ref({ certDN: '' })
@@ -558,7 +538,7 @@ const openBindDialog = async (row: UserRow) => {
 const handleBindQuery = async () => {
   if (!currentRow.value) return
   try {
-    const response = await getAdminCertificates(currentRow.value.id, { deptId: getDeptId() })
+    const response = await store.fetchCertificates(currentRow.value.id, { deptId: getDeptId() })
     const payload = response?.data ?? response
     const items = Array.isArray(payload) ? payload : payload?.data
     const keyword = bindQuery.value.certDN.trim()
@@ -580,7 +560,7 @@ const handleBindSelectionChange = (rows: CertOption[]) => {
 const handleBindSave = async () => {
   if (!currentRow.value) return
   try {
-    await bindAdminCert(currentRow.value.id, {
+    await store.bindCert(currentRow.value.id, {
       deptId: getDeptId(),
       deptName: currentRow.value.deptName,
       certIds: selectedCertIds.value,

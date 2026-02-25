@@ -3,6 +3,7 @@ import type {
   DeptListQuery,
   DeptForm,
   DeptApplicationPayload,
+  DeptCreatePayload,
   DeptApplyQuery,
 } from '@/types/department'
 
@@ -50,7 +51,7 @@ export const getDeptUsers = (id: string | number) => {
   })
 }
 
-export const createDepartment = (data: DeptApplicationPayload | DeptForm) => {
+export const createDepartment = (data: DeptCreatePayload | DeptForm | DeptApplicationPayload) => {
   return request({
     url: '/departments/applications',
     method: 'post',
